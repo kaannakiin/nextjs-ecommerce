@@ -1,0 +1,222 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  USER
+  ADMIN
+}
+
+enum Currency {
+  TRY
+  USD
+  EUR
+}
+
+enum Locale {
+  TR
+  EN
+  DE
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  surname   String
+  email     String?  @unique
+  phone     String?  @unique
+  password  String?
+  image     String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email], name: "idx_users_email")
+  @@index([phone], name: "idx_users_phone")
+}
+
+model Asset {
+  id   String    @id @default(cuid())
+  type AssetType @default(IMAGE)
+  url  String    @unique
+
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  productAsset ProductAsset[]
+  category     Category[]
+
+  @@index([url])
+}
+
+model ProductAsset {
+  id String @id @default(cuid())
+
+  order     Int     @default(0)
+  productId String
+  assetId   String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  asset     Asset   @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  // ⚠️ Bu CASCADE kalsın çünkü Asset silindiğinde ProductAsset junction tablosu temizlenmeli
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, assetId])
+  @@unique([productId, order])
+  @@index([productId, order])
+}
+
+model TaxonomyCategory {
+  id       String @id @default(cuid())
+  googleId String @unique
+
+  parentId String?
+  parent   TaxonomyCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children TaxonomyCategory[] @relation("CategoryHierarchy")
+
+  path      String?
+  pathNames String?
+  depth     Int     @default(0)
+
+  originalName String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // One-to-many relationship with Product
+  products Product[]
+
+  @@index([googleId])
+  @@index([parentId])
+  @@index([path])
+  @@index([depth])
+  @@index([isActive])
+}
+
+model CategoryTranslation {
+  id              String   @id @default(cuid())
+  locale          Locale   @default(TR)
+  categoryId      String
+  category        Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String
+  description     String?  @db.Text
+  metaTitle       String?
+  metaDescription String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, categoryId])
+  @@unique([locale, slug])
+  @@index([slug])
+}
+
+model Category {
+  id String @id @default(cuid())
+
+  imageId String?
+  image   Asset?  @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  // ✅ CASCADE yerine SetNull - asset silinince sadece imageId null olur
+
+  parentCategoryId String?
+  parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  childCategories  Category[] @relation("CategoryHierarchy")
+
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  translations CategoryTranslation[]
+
+  products ProductCategory[]
+
+  @@index([parentCategoryId])
+}
+
+model ProductCategory {
+  id         String   @id @default(cuid())
+  productId  String
+  categoryId String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, categoryId])
+  @@index([productId])
+  @@index([categoryId])
+}
+
+model ProductPrices {
+  id       String   @id @default(cuid())
+  currency Currency @default(TRY)
+  locale   Locale   @default(TR)
+
+  price           Float
+  discountedPrice Float?
+
+  Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, currency, productId])
+  @@index([productId])
+}
+
+model ProductTranslation {
+  id     String @id @default(cuid())
+  locale Locale @default(TR)
+  name   String
+  slug   String
+
+  description      String? @db.Text
+  shortDescription String? @db.Text
+  metaTitle        String?
+  metaDescription  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+
+  @@unique([locale, productId])
+  @@unique([locale, slug])
+  @@index([slug])
+  @@index([productId])
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  // Relations
+  prices       ProductPrices[]
+  translations ProductTranslation[]
+
+  // Many-to-many relationship with Category
+  categories ProductCategory[]
+
+  // One-to-many relationship with TaxonomyCategory
+  taxonomyCategory   TaxonomyCategory? @relation(fields: [taxonomyCategoryId], references: [id])
+  taxonomyCategoryId String?
+
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  assets    ProductAsset[]
+
+  @@index([createdAt])
+  @@index([taxonomyCategoryId])
+}
