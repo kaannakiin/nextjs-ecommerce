@@ -1,36 +1,128 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Terraviva E-Commerce Web Application
 
-## Getting Started
+Modern ve güvenli bir e-ticaret platformu. Next.js 15, Auth.js ve Prisma kullanılarak geliştirilmiştir.
 
-First, run the development server:
+## 🚀 Özellikler
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Modern Stack**: Next.js 15, React 19, TypeScript
+- **Güvenli Kimlik Doğrulama**: Auth.js ile RBAC (Role-Based Access Control)
+- **Veritabanı**: PostgreSQL + Prisma ORM
+- **Dosya Yönetimi**: MinIO object storage
+- **UI Framework**: Mantine + Tailwind CSS
+- **Form Yönetimi**: React Hook Form + Zod validation
+
+## 👥 Roller ve Yetkiler
+
+Sistem 3 farklı kullanıcı rolü ile çalışır:
+
+- **OWNER** - Tam yetki (sistem sahibi)
+- **ADMIN** - Yönetici yetkiler
+- **USER** - Normal kullanıcı
+
+## 🛡️ Güvenlik
+
+- `/admin` path'i altındaki tüm sayfalar korumalıdır
+- Sadece OWNER ve ADMIN rolleri admin dashboard'una erişebilir
+- RBAC sistemi ile detaylı yetkilendirme
+
+## 🛠️ Teknolojiler
+
+### Frontend
+
+- **Next.js 15** - React framework
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Mantine** - Component library
+- **Tailwind CSS** - Styling
+
+### Backend
+
+- **Auth.js** - Authentication
+- **Prisma** - Database ORM
+- **PostgreSQL** - Database
+- **MinIO** - Object storage
+- **Zod** - Schema validation
+
+## 📦 Kurulum
+
+1. **Bağımlılıkları yükleyin:**
+
+   ```bash
+   npm install
+   ```
+
+2. **Ortam değişkenlerini ayarlayın:**
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+3. **Gerekli environment variables:**
+
+   ```env
+   DATABASE_URL=
+   AUTH_SECRET=
+   MINIO_ENDPOINT=
+   MINIO_SECRET_KEY=
+   MINIO_ACCESS_KEY=
+   ```
+
+4. **Veritabanını hazırlayın:**
+
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. **Uygulamayı başlatın:**
+   ```bash
+   npm run dev
+   ```
+
+## 🚪 Erişim
+
+- **Ana Sayfa**: `http://localhost:3000`
+- **Admin Dashboard**: `http://localhost:3000/admin` (Yetki gerekli)
+
+## 📁 Proje Yapısı
+
+```
+├── app/
+│   ├── (admin)/admin/        # Admin dashboard
+│   ├── (auth)/              # Authentication pages
+│   ├── api/                 # API routes
+│   └── ...
+├── actions/                 # Server actions
+├── lib/                     # Utilities
+├── schemas/                 # Validation schemas
+└── types/                   # TypeScript types
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🎯 Admin Dashboard
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Admin dashboard'u şu modülleri içerir:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Ürün Yönetimi** - Kategori ve ürün işlemleri
+- **Kullanıcı Yönetimi** - Rol ve yetki kontrolü
+- **Dosya Yönetimi** - Resim/video upload
+- **Dashboard** - Genel sistem özeti
 
-## Learn More
+## 🔧 Geliştirme
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+# Development server
+npm run dev
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Build for production
+npm run build
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Start production server
+npm start
 
-## Deploy on Vercel
+# Linting
+npm run lint
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📝 Not
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Bu proje aktif geliştirme aşamasındadır. Yeni özellikler ve iyileştirmeler sürekli eklenmektedir.
