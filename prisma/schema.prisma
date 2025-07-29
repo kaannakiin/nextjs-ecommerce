@@ -57,6 +57,7 @@ model Asset {
   updatedAt    DateTime       @updatedAt
   productAsset ProductAsset[]
   category     Category[]
+  brand        ProductBrand[]
 
   @@index([url])
 }
@@ -130,7 +131,6 @@ model Category {
 
   imageId String?
   image   Asset?  @relation(fields: [imageId], references: [id], onDelete: SetNull)
-  // ✅ CASCADE yerine SetNull - asset silinince sadece imageId null olur
 
   parentCategoryId String?
   parentCategory   Category?  @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
@@ -212,6 +212,8 @@ model Product {
   // One-to-many relationship with TaxonomyCategory
   taxonomyCategory   TaxonomyCategory? @relation(fields: [taxonomyCategoryId], references: [id])
   taxonomyCategoryId String?
+  brand              ProductBrand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brandId            String?
 
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
@@ -219,4 +221,38 @@ model Product {
 
   @@index([createdAt])
   @@index([taxonomyCategoryId])
+}
+
+model ProductBrandTranslation {
+  id              String       @id @default(cuid())
+  locale          Locale       @default(TR)
+  name            String
+  slug            String
+  description     String?      @db.Text
+  metaTitle       String?
+  metaDescription String?      @db.Text
+  brandId         String
+  brand           ProductBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, brandId])
+  @@unique([locale, slug])
+  @@index([slug]) // Slug aramaları için
+  @@index([brandId]) // Brand sorguları için
+}
+
+model ProductBrand {
+  id            String                    @id @default(cuid())
+  imageId       String?
+  image         Asset?                    @relation(fields: [imageId], references: [id], onDelete: SetNull)
+  translations  ProductBrandTranslation[]
+  parentBrandId String?
+  parentBrand   ProductBrand?             @relation("BrandHierarchy", fields: [parentBrandId], references: [id])
+  childBrands   ProductBrand[]            @relation("BrandHierarchy")
+  products      Product[] // Ekle
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

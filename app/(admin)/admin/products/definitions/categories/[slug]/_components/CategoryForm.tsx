@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteImage } from "@/actions/helper-actions/delete-image";
 import CustomDropzone from "@/app/(admin)/_components/CustomDropzone";
 import { CustomRichTextWrapper } from "@/app/(admin)/_components/CustomRichTextWrapper";
 import GlobalLoadingOverlay from "@/app/(admin)/_components/GlobalLoadingOverlay";
@@ -24,17 +25,17 @@ import {
   Tooltip,
 } from "@mantine/core";
 import { IMAGE_MIME_TYPE } from "@mantine/dropzone";
-import { IconInfoCircle } from "@tabler/icons-react";
+import { IconCategory, IconInfoCircle } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import SeoCard from "../../../../_components/SeoCard";
 import { CategoryAction } from "../actions/CategoryAction";
-import { DeleteImage } from "@/actions/helper-actions/delete-image";
 
 interface CategoryFormProps {
   defaultValues?: Category;
+  parentData: { name: string; id: string }[];
 }
-const CategoryForm = ({ defaultValues }: CategoryFormProps) => {
+const CategoryForm = ({ defaultValues, parentData }: CategoryFormProps) => {
   const {
     control,
     handleSubmit,
@@ -111,6 +112,10 @@ const CategoryForm = ({ defaultValues }: CategoryFormProps) => {
               <Select
                 {...field}
                 error={fieldState.error?.message}
+                data={parentData.map((category) => ({
+                  value: category.id,
+                  label: category.name,
+                }))}
                 label={
                   <div className="flex flex-row gap-1 items-center">
                     <Text fz={"sm"} fw={500}>
@@ -122,6 +127,28 @@ const CategoryForm = ({ defaultValues }: CategoryFormProps) => {
                     >
                       <IconInfoCircle size={16} />
                     </Tooltip>
+                  </div>
+                }
+                nothingFoundMessage={
+                  <div className="flex flex-col items-center justify-center gap-4 py-8">
+                    <div className="p-3 bg-gray-100 rounded-full">
+                      <IconCategory size={40} className="text-gray-500" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-gray-600 mb-2">
+                        Kategori bulunamadı
+                      </p>
+                      <Button
+                        size="xs"
+                        variant="filled"
+                        type="button"
+                        onClick={() =>
+                          push("/admin/products/definitions/categories/create")
+                        }
+                      >
+                        Kategori Ekle
+                      </Button>
+                    </div>
                   </div>
                 }
               />

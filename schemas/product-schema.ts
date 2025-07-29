@@ -1,4 +1,4 @@
-import { Currency, Locale } from "@/app/generated/prisma";
+import { AssetType, Currency, Locale } from "@/app/generated/prisma";
 import * as z from "zod";
 
 export const PRODUCT_ASSET_MAX_FILES = 10; // Maksimum dosya sayısı
@@ -356,3 +356,135 @@ export const CategorySchema = z.object({
 });
 
 export type Category = z.infer<typeof CategorySchema>;
+
+export const BrandTranslationSchema = z.object({
+  locale: z.enum(Locale, {
+    error: "Lütfen geçerli bir dil seçiniz",
+  }),
+  name: z
+    .string({
+      error: "Marka adını giriniz",
+    })
+    .nonempty({
+      error: "Marka adı boş olamaz",
+    })
+    .max(512, {
+      error: "Marka adı 512 karakterden uzun olamaz",
+    }),
+  slug: z
+    .string({
+      error: "Marka slug'ını giriniz",
+    })
+    .nonempty({
+      error: "Marka slug'ı boş olamaz",
+    })
+    .max(512, {
+      error: "Marka slug'ı 512 karakterden uzun olamaz",
+    }),
+  description: z
+    .string({
+      error: "Marka açıklamasını giriniz",
+    })
+    .refine((value) => {
+      if (!value) return true; // nullable/optional için
+      return validateHTML(value);
+    })
+    .max(10000, {
+      error: "Marka açıklaması 10,000 karakterden uzun olamaz",
+    })
+    .optional()
+    .nullable(),
+  metaTitle: z
+    .string({
+      error: "Marka meta başlığını giriniz",
+    })
+    .max(256, {
+      error: "Marka meta başlığı 256 karakterden uzun olamaz",
+    })
+    .optional()
+    .nullable(),
+  metaDescription: z
+    .string({
+      error: "Marka meta açıklamasını giriniz",
+    })
+    .max(512, {
+      error: "Marka meta açıklaması 512 karakterden uzun olamaz",
+    })
+    .optional()
+    .nullable(),
+});
+export const BrandSchema = z.object({
+  uniqueId: z.cuid2().optional().nullable(),
+  translations: z
+    .array(BrandTranslationSchema, {
+      error: "Marka çevirilerini giriniz",
+    })
+    .refine(
+      (translations) =>
+        translations.some((translation) => translation.locale === "TR"),
+      { error: "En az bir çeviri Türkçe dilinde olmalıdır" }
+    )
+    .refine(
+      (translations) => {
+        // Her locale'nin sadece bir kez kullanıldığını kontrol et
+        const locales = new Set();
+
+        for (const translation of translations) {
+          if (locales.has(translation.locale)) {
+            return false; // Aynı locale birden fazla kez bulundu
+          }
+          locales.add(translation.locale);
+        }
+
+        return true;
+      },
+      { error: "Her dil için sadece bir çeviri tanımlanabilir" }
+    ),
+  image: z
+    .instanceof(File)
+    .refine(
+      (file) => {
+        if (file.size > PRODUCT_ASSET_MEDIA_MAX_SIZE) {
+          return false;
+        }
+        return true;
+      },
+      {
+        error: `Marka resmi ${
+          PRODUCT_ASSET_MEDIA_MAX_SIZE / 1024 / 1024
+        } MB'den küçük olmalıdır`,
+      }
+    )
+    .refine(
+      (file) => {
+        return PRODUCT_ASSET_MEDIA_MIME_TYPES.includes(file.type);
+      },
+      {
+        error: `Marka resmi sadece ${PRODUCT_ASSET_MEDIA_MIME_TYPES.join(", ")
+          .split("/")
+          .pop()} formatlarını destekler`,
+      }
+    )
+    .optional()
+    .nullable(),
+  parentBrandId: z
+    .cuid2({
+      error: "Lütfen geçerli bir üst marka seçiniz",
+    })
+    .optional()
+    .nullable(),
+  existingImages: z
+    .object({
+      url: z
+        .url({ error: "Lütfen geçerli bir resim URL'si giriniz" })
+        .startsWith("https://"),
+      type: z.enum(AssetType, {
+        error: "Lütfen geçerli bir resim tipi giriniz",
+      }),
+    })
+    .optional()
+    .nullable(),
+});
+
+export type Brand = z.infer<typeof BrandSchema>;
+export type BrandTranslation = z.infer<typeof BrandTranslationSchema>;

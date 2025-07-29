@@ -50,7 +50,7 @@ const SeoCard = <T extends Record<string, any>>({
   });
 
   return (
-    <Card shadow="md" className="gap-3">
+    <Card px={0} className="gap-3">
       <Title order={4}>Arama Motoru Optimizasyonu (SEO)</Title>
       <SimpleGrid
         cols={{
