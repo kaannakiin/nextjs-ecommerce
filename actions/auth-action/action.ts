@@ -46,13 +46,40 @@ export const RegisterAction = async (
         role: "USER",
       },
     });
+    if (!newUser) {
+      return {
+        success: false,
+        message: "Kullanıcı oluşturulamadı. Lütfen tekrar deneyin.",
+      };
+    }
+
+    const result = await signIn("credentials", {
+      type: data.email ? "email" : "phone",
+      email: data.email || undefined,
+      phone: data.phone || undefined,
+      password: data.password,
+      redirect: false,
+    });
 
     return {
       success: true,
       message: "Başarıyla kayıt olundu.",
     };
   } catch (error) {
-    console.error("Registration error:", error);
+    if (error instanceof CredentialsSignin) {
+      switch (error.type) {
+        case "CredentialsSignin":
+          return {
+            success: false,
+            message: "Email/telefon veya şifre hatalı.",
+          };
+        default:
+          return {
+            success: false,
+            message: "Giriş yapılırken bir hata oluştu.",
+          };
+      }
+    }
     return {
       success: false,
       message: "An error occurred while registering the user.",

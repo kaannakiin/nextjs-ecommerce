@@ -71,6 +71,9 @@ const SeoCard = <T extends Record<string, any>>({
                   leftSectionProps={{
                     className: "text-black bg-gray-100",
                   }}
+                  classNames={{
+                    input: "pl-10",
+                  }}
                   value={field.value || ""}
                   onChange={field.onChange}
                   onBlur={field.onBlur}

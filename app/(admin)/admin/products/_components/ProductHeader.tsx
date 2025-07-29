@@ -26,11 +26,16 @@ const ProductHeader = () => {
           <Button
             type="button"
             onClick={open}
+            radius="lg"
             leftSection={<IconPlus size={16} />}
           >
             Ürün Ekle
           </Button>
-          <PageHeaderSearchInput searchKey="search" variant="filled" />
+          <PageHeaderSearchInput
+            radius="lg"
+            searchKey="search"
+            variant="filled"
+          />
         </Group>
       </Group>
 
