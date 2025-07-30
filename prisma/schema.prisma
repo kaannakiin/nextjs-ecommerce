@@ -32,6 +32,11 @@ enum AssetType {
   DOCUMENT
 }
 
+enum VariantType {
+  CHOICE
+  COLOR
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String
@@ -53,11 +58,12 @@ model Asset {
   type AssetType @default(IMAGE)
   url  String    @unique
 
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  productAsset ProductAsset[]
-  category     Category[]
-  brand        ProductBrand[]
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  productAsset  ProductAsset[]
+  category      Category[]
+  brand         ProductBrand[]
+  variantOption VariantOption[]
 
   @@index([url])
 }
@@ -255,4 +261,60 @@ model ProductBrand {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model VariantOptionTranslation {
+  id     String @id @default(cuid())
+  locale Locale @default(TR)
+  name   String
+  slug   String
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  variantOption   VariantOption @relation(fields: [variantOptionId], references: [id])
+  variantOptionId String
+
+  @@unique([locale, variantOptionId])
+  @@unique([locale, slug])
+  @@index([slug]) // Slug aramaları için
+  @@index([variantOptionId]) // VariantOption sorguları için
+  @@index([locale, variantOptionId]) // Locale ve VariantOptionId kombinasyonu için
+}
+
+model VariantOption {
+  id           String                     @id @default(cuid())
+  translations VariantOptionTranslation[]
+  value        String
+  variantId    String
+  variant      Variant                    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  imageId      String?
+  image        Asset?                     @relation(fields: [imageId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VariantTranslation {
+  id     String @id @default(cuid())
+  locale Locale @default(TR)
+  name   String
+  slug   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  variant   Variant  @relation(fields: [variantId], references: [id])
+  variantId String
+
+  @@unique([locale, variantId])
+  @@unique([locale, slug])
+}
+
+model Variant {
+  id   String      @id @default(cuid())
+  type VariantType @default(CHOICE)
+
+  translations VariantTranslation[]
+  options      VariantOption[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
 }

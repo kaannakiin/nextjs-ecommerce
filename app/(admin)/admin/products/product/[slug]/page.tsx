@@ -1,6 +1,6 @@
 import { Params } from "@/types/globalTypes";
-import BasicProductForm from "../_components/BasicProductForm";
-import VariantProductForm from "../_components/VariantProductForm";
+import BasicProductForm from "../../_components/BasicProductForm";
+import VariantProductForm from "../../_components/VariantProductForm";
 
 const ProductFormPage = async ({ params }: { params: Params }) => {
   const slug = (await params).slug;

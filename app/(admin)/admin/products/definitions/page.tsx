@@ -39,7 +39,7 @@ const DefinitionsPage = () => {
     },
     {
       title: "Varyant Grupları",
-      href: "/admin/products/definitions/variant-groups",
+      href: "/admin/products/definitions/variants",
       description:
         "Ürün varyant gruplarınızı yönetebilir. Varyant grupları oluşturabilir, düzenleyebilir ve silebilirsiniz.",
       icon: (

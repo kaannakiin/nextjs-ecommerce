@@ -1,7 +1,7 @@
 "use client";
 
 import CustomDropzone from "@/app/(admin)/_components/CustomDropzone";
-import CustomRichTextEditor from "@/app/(admin)/_components/CustomRichTextEditor";
+import { CustomRichTextWrapper } from "@/app/(admin)/_components/CustomRichTextWrapper";
 import {
   BasicProduct,
   BasicProductSchema,
@@ -10,15 +10,10 @@ import {
   PRODUCT_ASSET_MEDIA_MIME_TYPES,
 } from "@/schemas/product-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  Controller,
-  SubmitHandler,
-  useFieldArray,
-  useForm,
-} from "react-hook-form";
-import SeoCard from "./SeoCard";
 import { Select, SimpleGrid } from "@mantine/core";
+import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import GoogleTaxonomySelect from "./GoogleTaxonomySelect";
+import SeoCard from "./SeoCard";
 
 const BasicProductForm = () => {
   const { control, handleSubmit, watch } = useForm<BasicProduct>({
@@ -54,7 +49,7 @@ const BasicProductForm = () => {
           name="translations.0.description"
           render={({ field, fieldState }) => (
             <div>
-              <CustomRichTextEditor
+              <CustomRichTextWrapper
                 label="Ürün Açıklaması"
                 value={field.value || ""}
                 onChange={field.onChange}

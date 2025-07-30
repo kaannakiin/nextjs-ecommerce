@@ -7,10 +7,16 @@ interface CustomImageProps {
   src: string;
   alt?: string;
   objectFit?: "cover" | "contain" | "fill" | "none" | "scale-down";
+  renderThumbnail?: boolean; // Yeni prop
 }
 
-const CustomImage = ({ src, alt, objectFit }: CustomImageProps) => {
-  const [loading, setLoading] = useState(true);
+const CustomImage = ({
+  src,
+  alt,
+  objectFit = "cover",
+  renderThumbnail = true,
+}: CustomImageProps) => {
+  const [loading, setLoading] = useState(renderThumbnail); // Thumbnail yoksa loading başlangıçta false
 
   const getThumbnailUrl = (originalSrc: string): string => {
     const lastDotIndex = originalSrc.lastIndexOf(".");
@@ -28,35 +34,38 @@ const CustomImage = ({ src, alt, objectFit }: CustomImageProps) => {
     <div
       className="relative w-full h-full"
       style={{
-        isolation: "isolate", // Yeni stacking context oluştur
-        contain: "layout style paint", // CSS containment
+        isolation: "isolate",
+        contain: "layout style paint",
       }}
     >
-      {/* Thumbnail (blurred background) */}
-      <Image
-        fill
-        priority
-        unoptimized
-        alt={alt || "Thumbnail"}
-        src={getThumbnailUrl(src)}
-        style={{
-          objectFit: objectFit,
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          zIndex: 1,
-        }}
-        className={`transition-opacity duration-300 ${
-          loading ? "opacity-100" : "opacity-0"
-        }`}
-      />
+      {/* Conditional Thumbnail Rendering */}
+      {renderThumbnail && (
+        <Image
+          fill
+          priority
+          unoptimized
+          alt={alt || "Thumbnail"}
+          src={getThumbnailUrl(src)}
+          style={{
+            objectFit: objectFit,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 1,
+          }}
+          className={`transition-opacity duration-300 ${
+            loading ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      )}
 
+      {/* Main Image */}
       <Image
         fill
         unoptimized
-        alt={`${alt}-real-image`}
+        alt={alt || "Main image"}
         src={src}
         style={{
           objectFit: objectFit,
@@ -71,6 +80,7 @@ const CustomImage = ({ src, alt, objectFit }: CustomImageProps) => {
         className={`transition-opacity duration-300 ${
           loading ? "opacity-0" : "opacity-100"
         }`}
+        priority={!renderThumbnail}
       />
     </div>
   );

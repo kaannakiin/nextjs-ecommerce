@@ -1,4 +1,9 @@
-import { AssetType, Currency, Locale } from "@/app/generated/prisma";
+import {
+  AssetType,
+  Currency,
+  Locale,
+  VariantType,
+} from "@/app/generated/prisma";
 import * as z from "zod";
 
 export const PRODUCT_ASSET_MAX_FILES = 10; // Maksimum dosya sayısı
@@ -488,3 +493,152 @@ export const BrandSchema = z.object({
 
 export type Brand = z.infer<typeof BrandSchema>;
 export type BrandTranslation = z.infer<typeof BrandTranslationSchema>;
+
+export const VariantOptionTranslationSchema = z.object({
+  locale: z.enum(Locale, {
+    error: "Lütfen geçerli bir dil seçiniz",
+  }),
+  name: z
+    .string({
+      error: "Varyant seçeneği adını giriniz",
+    })
+    .nonempty({
+      error: "Varyant seçeneği adı boş olamaz",
+    })
+    .max(512, {
+      error: "Varyant seçeneği adı 512 karakterden uzun olamaz",
+    }),
+});
+export const VariantOptionSchema = z.object({
+  uniqueId: z.cuid2().optional().nullable(),
+  value: z
+    .string({ error: "Varyant seçeneği değerini giriniz" })
+    .nonempty({
+      error: "Varyant seçeneği değeri boş olamaz",
+    })
+    .max(512, {
+      error: "Varyant seçeneği değeri 512 karakterden uzun olamaz",
+    }),
+  translations: z
+    .array(VariantOptionTranslationSchema, {
+      error: "Varyant seçeneği çevirilerini giriniz",
+    })
+    .refine(
+      (translations) =>
+        translations.some((translation) => translation.locale === "TR"),
+      {
+        error: "En az bir çeviri Türkçe dilinde olmalıdır",
+      }
+    )
+    .refine(
+      (translations) => {
+        const locales = new Set();
+        for (const translation of translations) {
+          if (locales.has(translation.locale)) {
+            return false;
+          }
+          locales.add(translation.locale);
+        }
+        return true;
+      },
+      {
+        message: "Her dil için sadece bir çeviri tanımlanabilir",
+      }
+    ),
+  image: z
+    .instanceof(File)
+    .refine(
+      (file) => {
+        if (file.size > PRODUCT_ASSET_MEDIA_MAX_SIZE) {
+          return false;
+        }
+        return true;
+      },
+      {
+        error: `Marka resmi ${
+          PRODUCT_ASSET_MEDIA_MAX_SIZE / 1024 / 1024
+        } MB'den küçük olmalıdır`,
+      }
+    )
+    .refine(
+      (file) => {
+        return PRODUCT_ASSET_MEDIA_MIME_TYPES.includes(file.type);
+      },
+      {
+        error: `Marka resmi sadece ${PRODUCT_ASSET_MEDIA_MIME_TYPES.join(", ")
+          .split("/")
+          .pop()} formatlarını destekler`,
+      }
+    )
+    .optional()
+    .nullable(),
+  existingImages: z
+    .object({
+      url: z
+        .url({ error: "Lütfen geçerli bir resim URL'si giriniz" })
+        .startsWith("https://"),
+      type: z.enum(AssetType, {
+        error: "Lütfen geçerli bir resim tipi giriniz",
+      }),
+    })
+    .optional()
+    .nullable(),
+});
+export type VariantOption = z.infer<typeof VariantOptionSchema>;
+export type VariantOptionTranslation = z.infer<
+  typeof VariantOptionTranslationSchema
+>;
+
+export const VariantTranslationSchema = z.object({
+  locale: z.enum(Locale, {
+    error: "Lütfen geçerli bir dil seçiniz",
+  }),
+  name: z
+    .string({
+      error: "Varyant adını giriniz",
+    })
+    .nonempty({
+      error: "Varyant adı boş olamaz",
+    })
+    .max(512, {
+      error: "Varyant adı 512 karakterden uzun olamaz",
+    }),
+});
+export const VariantSchema = z.object({
+  uniqueId: z.cuid2().optional().nullable(),
+  translations: z
+    .array(VariantTranslationSchema, {
+      error: "Varyant çevirilerini giriniz",
+    })
+    .refine(
+      (translations) =>
+        translations.some((translation) => translation.locale === "TR"),
+      { error: "En az bir çeviri Türkçe dilinde olmalıdır" }
+    )
+    .refine(
+      (translations) => {
+        const locales = new Set();
+        for (const translation of translations) {
+          if (locales.has(translation.locale)) {
+            return false;
+          }
+          locales.add(translation.locale);
+        }
+        return true;
+      },
+      { error: "Her dil için sadece bir çeviri tanımlanabilir" }
+    ),
+  type: z.enum(VariantType, {
+    error: "Lütfen geçerli bir varyant tipi seçiniz",
+  }),
+  options: z
+    .array(VariantOptionSchema, {
+      error: "Varyant seçeneklerini giriniz",
+    })
+    .refine((options) => options.length > 0, {
+      error: "En az bir varyant seçeneği tanımlanmalıdır",
+    }),
+});
+
+export type Variant = z.infer<typeof VariantSchema>;
+export type VariantTranslation = z.infer<typeof VariantTranslationSchema>;

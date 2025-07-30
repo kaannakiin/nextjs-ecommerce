@@ -56,7 +56,7 @@ const ProductHeader = () => {
             padding="lg"
             radius="md"
             onClick={() => {
-              push("/admin/products/create-basic");
+              push("/admin/products/product/create-basic");
               close();
             }}
             withBorder
@@ -95,7 +95,7 @@ const ProductHeader = () => {
             shadow="sm"
             padding="lg"
             onClick={() => {
-              push("/admin/products/create-variant");
+              push("/admin/products/product/create-variant");
               close();
             }}
             radius="md"

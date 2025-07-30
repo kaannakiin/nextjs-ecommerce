@@ -7,6 +7,7 @@ import {
   Text,
   ActionIcon,
   Alert,
+  SimpleGridProps,
 } from "@mantine/core";
 import { Dropzone, DropzoneProps, FileRejection } from "@mantine/dropzone";
 import {
@@ -23,12 +24,14 @@ interface CustomDropzoneProps extends DropzoneProps {
   label: string;
   value: File[] | null;
   onRemove?: (index: number) => void;
+  cols?: SimpleGridProps["cols"];
 }
 
 const CustomDropzone = ({
   label,
   value,
   onRemove,
+  cols = { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 }, // Varsayılan kolon sayıları
   ...props
 }: CustomDropzoneProps) => {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
@@ -223,16 +226,7 @@ const CustomDropzone = ({
       </Dropzone>
 
       {value && value.length > 0 && (
-        <SimpleGrid
-          cols={{
-            xs: 2,
-            md: 3,
-            lg: 4,
-            xl: 5,
-            xxl: 6,
-          }}
-          mt="md"
-        >
+        <SimpleGrid cols={cols} mt="md">
           {value.map((file, index) => (
             <AspectRatio
               ratio={1}

@@ -1,0 +1,113 @@
+.root {
+  position: relative;
+  padding: var(--mantine-spacing-lg);
+  background: linear-gradient(
+    135deg,
+    var(--mantine-color-gray-1) 0%,
+    var(--mantine-color-gray-2) 100%
+  );
+  border: 2px solid var(--mantine-color-gray-4);
+  border-radius: var(--mantine-radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: border-color 300ms ease, background 300ms ease,
+    box-shadow 300ms ease, transform 200ms ease;
+  cursor: pointer;
+
+  &[data-checked] {
+    border-color: var(--mantine-color-primary-6);
+    background: linear-gradient(
+      135deg,
+      white 0%,
+      var(--mantine-color-primary-0) 100%
+    );
+    box-shadow: 0 4px 20px rgba(var(--mantine-color-primary-6-rgb), 0.15),
+      0 2px 8px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+
+    /* Checked state için subtle glow efekti */
+    &::before {
+      content: "";
+      position: absolute;
+      top: -2px;
+      left: -2px;
+      right: -2px;
+      bottom: -2px;
+      background: linear-gradient(
+        45deg,
+        var(--mantine-color-primary-4),
+        var(--mantine-color-primary-6)
+      );
+      border-radius: calc(var(--mantine-radius-md) + 2px);
+      z-index: -1;
+      opacity: 0.3;
+      filter: blur(8px);
+      transition: opacity 300ms ease;
+    }
+  }
+
+  @mixin hover {
+    @mixin light {
+      background: linear-gradient(
+        135deg,
+        white 0%,
+        var(--mantine-color-gray-0) 100%
+      );
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.08), 0 3px 12px rgba(0, 0, 0, 0.12);
+      transform: translateY(-2px);
+      border-color: var(--mantine-color-gray-5);
+    }
+
+    @mixin dark {
+      background: linear-gradient(
+        135deg,
+        var(--mantine-color-dark-6) 0%,
+        var(--mantine-color-dark-5) 100%
+      );
+      border-color: var(--mantine-color-dark-4);
+    }
+  }
+
+  /* Active/focus states */
+  &:active {
+    transform: translateY(0);
+    transition-duration: 100ms;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mantine-color-primary-6);
+    outline-offset: 2px;
+  }
+}
+
+.label {
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 600;
+  font-size: var(--mantine-font-size-md);
+  line-height: 1.4;
+  color: var(--mantine-color-dark-7);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+
+  [data-checked] & {
+    color: var(--mantine-color-primary-8);
+    font-weight: 700;
+  }
+
+  @mixin dark {
+    color: var(--mantine-color-gray-0);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
+    [data-checked] & {
+      color: var(--mantine-color-primary-3);
+    }
+  }
+}
+/* CSS dosyasına ekle */
+.dragContainer {
+  overflow: hidden;
+  width: 100%;
+}
+
+.dropZone {
+  overflow-x: hidden;
+  width: 100%;
+}

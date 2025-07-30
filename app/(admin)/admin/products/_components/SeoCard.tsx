@@ -72,7 +72,7 @@ const SeoCard = <T extends Record<string, any>>({
                     className: "text-black bg-gray-100",
                   }}
                   classNames={{
-                    input: "pl-10",
+                    input: "!pl-10",
                   }}
                   value={field.value || ""}
                   onChange={field.onChange}

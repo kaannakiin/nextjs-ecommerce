@@ -22,9 +22,15 @@ interface ObjectDeleteModalProps {
   url: string;
   type: AssetType;
   onDelete?: () => Promise<ActionResponse>;
+  renderThumbnail?: boolean; // Yeni prop
 }
 
-const ObjectDeleteModal = ({ url, type, onDelete }: ObjectDeleteModalProps) => {
+const ObjectDeleteModal = ({
+  url,
+  type,
+  onDelete,
+  renderThumbnail = true, // Yeni prop varsayılan değeri
+}: ObjectDeleteModalProps) => {
   const [opened, { open, close }] = useDisclosure();
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -78,10 +84,14 @@ const ObjectDeleteModal = ({ url, type, onDelete }: ObjectDeleteModalProps) => {
     <>
       <GlobalLoadingOverlay visible={loading} />
 
-      <div className="size-64 relative group">
+      <div className={`size-12 relative group`}>
         <div className="absolute inset-0">
           {type === "IMAGE" ? (
-            <CustomImage src={url} objectFit="contain" />
+            <CustomImage
+              src={url}
+              objectFit="contain"
+              renderThumbnail={renderThumbnail}
+            />
           ) : type === "VIDEO" ? (
             <video
               src={url}
