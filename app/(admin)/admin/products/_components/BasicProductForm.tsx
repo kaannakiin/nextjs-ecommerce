@@ -30,9 +30,7 @@ const BasicProductForm = () => {
           metaTitle: null,
         },
       ],
-      prices: [
-        { currency: "TRY", locale: "TR", price: 0, discountedPrice: null },
-      ],
+      prices: [{ currency: "TRY", price: 0, discountedPrice: null }],
     },
   });
 
