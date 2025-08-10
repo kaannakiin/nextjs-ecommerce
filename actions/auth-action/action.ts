@@ -9,6 +9,7 @@ import {
 } from "@/schemas/auth.schemas";
 import { ActionResponse } from "@/types/globalTypes";
 import { hash } from "bcryptjs";
+import { sign } from "crypto";
 import { CredentialsSignin } from "next-auth";
 import { treeifyError } from "zod";
 
@@ -135,6 +136,38 @@ export const LoginAction = async (
     return {
       success: false,
       message: "Beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+};
+export const LoginActionWithGoogle = async () => {
+  try {
+    // redirectTo parametresi ile yönlendirme URL'i belirtin
+    await signIn("google", { redirectTo: "/" }); // veya istediğiniz URL
+  } catch (error) {
+    // NEXT_REDIRECT hatası normal davranıştır, tekrar fırlat
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
+
+    console.error("Google login error:", error);
+    return {
+      success: false,
+      error: "Giriş başarısız",
+    };
+  }
+};
+export const LoginActionWithFacebook = async () => {
+  try {
+    await signIn("facebook", { redirectTo: "/" });
+  } catch (error) {
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
+
+    console.error("Facebook login error:", error);
+    return {
+      success: false,
+      error: "Facebook ile giriş başarısız",
     };
   }
 };
