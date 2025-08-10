@@ -4,7 +4,8 @@ import type { NextAuthConfig } from "next-auth";
 import { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import prisma from "./prisma";
-
+import Google from "next-auth/providers/google";
+import Facebook from "next-auth/providers/facebook";
 class InvalidLoginError extends CredentialsSignin {
   code = "Invalid identifier or password";
 }
@@ -70,11 +71,25 @@ export default {
           ...(user.email ? { email: user.email } : {}),
           ...(user.phone ? { phone: user.phone } : {}),
           id: user.id,
-          name: `${user.name?.charAt(0).toUpperCase() + user.name?.slice(1)} ${
-            user.surname?.charAt(0).toUpperCase() + user.surname?.slice(1)
+          name: `${
+            user.name
+              ? user.name.charAt(0).toUpperCase() + user.name.slice(1)
+              : ""
+          } ${
+            user.surname
+              ? user.surname.charAt(0).toUpperCase() + user.surname.slice(1)
+              : ""
           }`,
         };
       },
+    }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    Facebook({
+      clientId: process.env.AUTH_FACEBOOK_ID,
+      clientSecret: process.env.AUTH_FACEBOOK_SECRET,
     }),
   ],
 } satisfies NextAuthConfig;

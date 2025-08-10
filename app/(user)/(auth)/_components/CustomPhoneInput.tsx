@@ -3,6 +3,7 @@ import {
   Combobox,
   Group,
   InputBase,
+  InputBaseProps,
   ScrollArea,
   Text,
   useCombobox,
@@ -16,7 +17,8 @@ import {
   usePhoneInput,
 } from "react-international-phone";
 
-interface CustomPhoneInputProps {
+interface CustomPhoneInputProps
+  extends Pick<InputBaseProps, "radius" | "size" | "styles"> {
   value: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
@@ -29,6 +31,23 @@ const CustomPhoneInput = ({
   value,
   onBlur,
   error,
+  radius = "lg",
+  size = "md",
+  styles = {
+    label: {
+      fontWeight: 600,
+      marginBottom: "8px",
+      color: "#191414",
+    },
+    input: {
+      height: "48px",
+      fontSize: "14px",
+      border: "2px solid #d9d9d9",
+      "&:focus": {
+        borderColor: "#1db954",
+      },
+    },
+  },
   label,
 }: CustomPhoneInputProps) => {
   const [searchValue, setSearchValue] = useState("");
@@ -67,6 +86,9 @@ const CustomPhoneInput = ({
       onBlur={onBlur}
       error={error}
       label={label}
+      radius={radius}
+      styles={styles}
+      size={size}
       leftSection={
         <Combobox
           store={combobox}
