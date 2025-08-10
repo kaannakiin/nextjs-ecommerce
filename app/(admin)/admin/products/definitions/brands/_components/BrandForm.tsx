@@ -17,16 +17,16 @@ import {
   Group,
   Select,
   SimpleGrid,
-  Stack,
   TextInput,
   Title,
 } from "@mantine/core";
 import { IMAGE_MIME_TYPE } from "@mantine/dropzone";
+import { IconBrandMedium } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import SeoCard from "../../../_components/SeoCard";
 import { BrandAction } from "../actions/BrandAction";
-import { IconBrandMedium } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 
 interface BrandFormProps {
   defaultValues?: Brand;
@@ -64,14 +64,34 @@ const BrandForm = ({ defaultValues, parentData }: BrandFormProps) => {
     try {
       const response = await BrandAction(data).then((res) => {
         if (res.success) {
+          notifications.show({
+            title: "Başarılı",
+            message: res.message || "Marka başarıyla işlendi",
+            position: "bottom-right",
+            color: "green",
+            autoClose: true,
+          });
           push("/admin/products/definitions/brands");
         } else if (!res.success) {
-          setError("root", {
-            message: res.message || "Bir hata oluştu",
+          notifications.show({
+            title: "Hata",
+            message: res.message || "Marka işlenirken bir hata oluştu",
+            position: "bottom-right",
+            color: "red",
+            autoClose: true,
           });
         }
       });
     } catch (error) {
+      console.error("Error in brand form submission:", error);
+      notifications.show({
+        title: "Hata",
+        autoClose: true,
+        message: "Bir hata oluştu, lütfen tekrar deneyin.",
+        position: "bottom-right",
+        color: "red",
+      });
+
       setError("root", {
         message: "Bir hata oluştu, lütfen tekrar deneyin.",
       });

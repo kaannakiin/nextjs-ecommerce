@@ -28,11 +28,10 @@ export async function CategoryAction(
         message: "You do not have permission to perform this action.",
       };
     }
-
-    if (formData.uniqueId) {
+    if (data.uniqueId) {
       // GÜNCELLEME İŞLEMİ
       const category = await prisma.category.findUnique({
-        where: { id: formData.uniqueId },
+        where: { id: data.uniqueId },
         include: {
           image: true,
           translations: true, // Mevcut translation'ları da getir
@@ -47,7 +46,7 @@ export async function CategoryAction(
       }
 
       // Slug benzersizlik kontrolü - sadece BAŞKA kategorilerde kontrol et
-      for (const translation of formData.translations) {
+      for (const translation of data.translations) {
         const translationExists = await prisma.categoryTranslation.findUnique({
           where: {
             locale_slug: {
@@ -60,7 +59,7 @@ export async function CategoryAction(
         // Eğer başka bir kategori bu slug'ı kullanıyorsa hata ver
         if (
           translationExists &&
-          translationExists.categoryId !== formData.uniqueId
+          translationExists.categoryId !== data.uniqueId
         ) {
           return {
             success: false,
@@ -74,10 +73,10 @@ export async function CategoryAction(
       }
 
       // Resim yükleme
-      const urls = formData.image
+      const urls = data.image
         ? await uploadFileToMinio({
             bucketName: "category-assets",
-            file: formData.image,
+            file: data.image,
             isNeedOg: true,
             isNeedThumbnail: true,
           })
@@ -90,9 +89,8 @@ export async function CategoryAction(
         });
       }
 
-      // Kategoriyi güncelle
       const updatedCategory = await prisma.category.update({
-        where: { id: formData.uniqueId },
+        where: { id: data.uniqueId },
         data: {
           ...(urls &&
             urls.success &&
@@ -100,20 +98,33 @@ export async function CategoryAction(
               image: {
                 create: {
                   url: urls.data.originalUrl,
-                  type: formData.image?.type.startsWith("image/")
+                  type: data.image?.type.startsWith("image/")
                     ? "IMAGE"
-                    : formData.image?.type.startsWith("video/")
+                    : data.image?.type.startsWith("video/")
                     ? "VIDEO"
                     : "DOCUMENT",
                 },
               },
             }),
+          ...(data.parentCategoryId
+            ? {
+                parentCategory: {
+                  connect: {
+                    id: data.parentCategoryId,
+                  },
+                },
+              }
+            : {
+                parentCategory: {
+                  disconnect: true,
+                },
+              }),
           translations: {
             // Önce mevcut translation'ları sil, sonra yenilerini oluştur
             deleteMany: {
-              categoryId: formData.uniqueId,
+              categoryId: data.uniqueId,
             },
-            create: formData.translations.map((translation) => ({
+            create: data.translations.map((translation) => ({
               locale: translation.locale,
               name: translation.name,
               description: translation.description,
@@ -133,7 +144,7 @@ export async function CategoryAction(
       // YENİ OLUŞTURMA İŞLEMİ
 
       // Slug benzersizlik kontrolü - tüm kategorilerde kontrol et
-      for (const translation of formData.translations) {
+      for (const translation of data.translations) {
         const categoryIsCreatable = await prisma.categoryTranslation.findUnique(
           {
             where: {
@@ -158,10 +169,10 @@ export async function CategoryAction(
       }
 
       // Resim yükleme
-      const urls = formData.image
+      const urls = data.image
         ? await uploadFileToMinio({
             bucketName: "category-assets",
-            file: formData.image,
+            file: data.image,
             isNeedOg: true,
             isNeedThumbnail: true,
           })
@@ -170,29 +181,36 @@ export async function CategoryAction(
       // Yeni kategori oluştur
       const createdCategory = await prisma.category.create({
         data: {
+          ...(data.parentCategoryId && {
+            parentCategory: {
+              connect: {
+                id: data.parentCategoryId,
+              },
+            },
+          }),
           ...(urls &&
             urls.success &&
             urls.data?.originalUrl && {
               image: {
                 create: {
                   url: urls.data.originalUrl,
-                  type: formData.image?.type.startsWith("image/")
+                  type: data.image?.type.startsWith("image/")
                     ? "IMAGE"
-                    : formData.image?.type.startsWith("video/")
+                    : data.image?.type.startsWith("video/")
                     ? "VIDEO"
                     : "DOCUMENT",
                 },
               },
             }),
-          ...(formData.parentCategoryId && {
+          ...(data.parentCategoryId && {
             parentCategory: {
               connect: {
-                id: formData.parentCategoryId,
+                id: data.parentCategoryId,
               },
             },
           }),
           translations: {
-            create: formData.translations.map((translation) => ({
+            create: data.translations.map((translation) => ({
               locale: translation.locale,
               name: translation.name,
               description: translation.description,
@@ -214,6 +232,39 @@ export async function CategoryAction(
     return {
       success: false,
       message: "Kategori işlemi sırasında bir hata oluştu.",
+    };
+  }
+}
+
+export async function DeleteCategory(id: string): Promise<ActionResponse> {
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.category.updateMany({
+        where: { parentCategoryId: id },
+        data: { parentCategoryId: null },
+      });
+
+      await tx.productCategory.deleteMany({
+        where: { categoryId: id },
+      });
+
+      await tx.categoryTranslation.deleteMany({
+        where: { categoryId: id },
+      });
+      await tx.category.delete({
+        where: { id },
+      });
+    });
+
+    return {
+      success: true,
+      message: "Kategori başarıyla silindi.",
+    };
+  } catch (error) {
+    console.error("Zorla silme hatası:", error);
+    return {
+      success: false,
+      message: "Kategori silinirken bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
 }

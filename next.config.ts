@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       {
         hostname: "cdn.playflexdesign.com",
       },
+      { hostname: "placehold.co" },
     ],
   },
 };

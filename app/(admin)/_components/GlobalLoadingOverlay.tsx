@@ -20,6 +20,7 @@ const GlobalLoadingOverlay = ({
 }: GlobalLoadingOverlayProps) => {
   return (
     <LoadingOverlay
+      className="fixed inset-0 z-50" // ⭐ Bu değişiklik
       visible={visible}
       overlayProps={overlayProps}
       loaderProps={loaderProps}

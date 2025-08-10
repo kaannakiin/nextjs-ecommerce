@@ -1,6 +1,4 @@
 import "./globals.css";
-import { Suspense } from "react";
-import TanstackProvider from "./_components/TanstackProvider";
 import {
   ColorSchemeScript,
   MantineColorsTuple,
@@ -8,6 +6,9 @@ import {
   createTheme,
   mantineHtmlProps,
 } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
+import { Suspense } from "react";
+import TanstackProvider from "./_components/TanstackProvider";
 
 const primary: MantineColorsTuple = [
   "#ecf4ff",
@@ -26,6 +27,7 @@ const theme = createTheme({
   colors: {
     primary,
   },
+  cursorType: "pointer",
 });
 export default function RootLayout({
   children,
@@ -40,7 +42,10 @@ export default function RootLayout({
       <body className={`antialiased min-h-screen flex flex-col relative`}>
         <Suspense>
           <TanstackProvider>
-            <MantineProvider theme={theme}>{children}</MantineProvider>
+            <MantineProvider theme={theme}>
+              <Notifications autoClose={2000} />
+              {children}
+            </MantineProvider>
           </TanstackProvider>
         </Suspense>
       </body>

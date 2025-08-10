@@ -2,6 +2,7 @@ import {
   AssetType,
   Currency,
   Locale,
+  ProductType,
   VariantType,
 } from "@/app/generated/prisma";
 import * as z from "zod";
@@ -62,7 +63,6 @@ export const ProductImageSchema = z
 
 export const ProductPriceSchema = z
   .object({
-    locale: z.enum(Locale),
     currency: z.enum(Currency),
     price: z
       .number({
@@ -76,6 +76,13 @@ export const ProductPriceSchema = z
       .nonnegative({
         error: "İndirimli fiyat tutar 0'dan küçük olamaz",
       })
+      .optional()
+      .nullable(),
+    buyedPrice: z
+      .number({
+        error: "Satın alınan fiyat tutarını giriniz",
+      })
+      .nonnegative({ error: "Satın alınan fiyat tutar 0'dan küçük olamaz" })
       .optional()
       .nullable(),
   })
@@ -164,33 +171,42 @@ export type ProductTranslation = z.infer<typeof ProductTranslationSchema>;
 
 export const BasicProductSchema = z.object({
   googleTaxonomyId: z.string().optional().nullable(),
-  categoryId: z
-    .cuid2({ error: "Lütfen geçerli bir kategori seçiniz" })
+  productType: z.enum(ProductType, {
+    error: "Lütfen geçerli bir ürün tipi seçiniz",
+  }),
+  categoryIds: z
+    .array(z.cuid2({ error: "Lütfen geçerli bir kategori seçiniz" }))
+    .optional()
+    .nullable(),
+  brandId: z
+    .cuid2({
+      error: "Lütfen geçerli bir marka seçiniz",
+    })
     .optional()
     .nullable(),
   prices: z
     .array(ProductPriceSchema, {
       error: "Ürün fiyatlarını giriniz",
     })
-    .refine((prices) => prices.some((price) => price.locale === "TR"), {
-      error: "En az bir fiyat Türkçe dilinde olmalıdır",
+    .refine((prices) => prices.some((price) => price.currency === "TRY"), {
+      error: "En az bir fiyat Türk Lirası (TRY) olarak tanımlanmalıdır",
     })
     .refine(
       (prices) => {
         // Her locale'nin sadece bir kez kullanıldığını kontrol et
-        const locales = new Set();
+        const currencies = new Set();
 
         for (const price of prices) {
-          if (locales.has(price.locale)) {
-            return false; // Aynı locale birden fazla kez bulundu
+          if (currencies.has(price.currency)) {
+            return false; // Aynı currency birden fazla kez bulundu
           }
-          locales.add(price.locale);
+          currencies.add(price.currency);
         }
 
         return true;
       },
       {
-        message: "Her dil için sadece bir fiyat tanımlanabilir",
+        error: "Her para birimi için sadece bir fiyat tanımlanabilir",
       }
     ),
   translations: z
@@ -418,6 +434,7 @@ export const BrandTranslationSchema = z.object({
     .optional()
     .nullable(),
 });
+
 export const BrandSchema = z.object({
   uniqueId: z.cuid2().optional().nullable(),
   translations: z
@@ -642,3 +659,172 @@ export const VariantSchema = z.object({
 
 export type Variant = z.infer<typeof VariantSchema>;
 export type VariantTranslation = z.infer<typeof VariantTranslationSchema>;
+
+export const VariantProductSchema = BasicProductSchema.omit({
+  prices: true,
+}).extend({
+  uniqueId: z.cuid2().optional().nullable(),
+  selectedVariants: z.array(VariantSchema),
+  existingImages: z
+    .array(
+      z.object({
+        url: z.url({
+          error: "Lütfen geçerli bir resim URL'si giriniz",
+        }),
+        type: z.enum(AssetType, {
+          error: "Lütfen geçerli bir resim tipi giriniz",
+        }),
+      })
+    )
+    .optional()
+    .nullable(),
+  variants: z
+    .array(
+      z.object({
+        options: z.array(
+          z.object({
+            variantGroupId: z.cuid2({
+              error: "Lütfen geçerli bir varyant grubu ID'si giriniz",
+            }),
+            variantOptionId: z.cuid2({
+              error: "Lütfen geçerli bir varyant seçeneği ID'si giriniz",
+            }),
+          })
+        ),
+        images: z.array(ProductImageSchema, {
+          error: "Ürün resimlerini giriniz",
+        }),
+        existingImages: z
+          .array(
+            z.object({
+              url: z.url({
+                error: "Lütfen geçerli bir resim URL'si giriniz",
+              }),
+              type: z.enum(AssetType, {
+                error: "Lütfen geçerli bir resim tipi giriniz",
+              }),
+            })
+          )
+          .optional()
+          .nullable(),
+        sku: z
+          .string({ error: "SKU numarası zorunludur." })
+          .min(1, { error: "SKU numarası en az 1 karakter olmalıdır." })
+          .max(256, { error: "SKU numarası en fazla 256 karakter olmalıdır." }),
+        barcode: z
+          .string({ error: "Barkod numarası zorunludur." })
+          .min(1, { error: "Barkod numarası en az 1 karakter olmalıdır." })
+          .max(256, {
+            error: "Barkod numarası en fazla 256 karakter olmalıdır.",
+          }),
+        stock: z
+          .number({ error: "Stock zorunludur" })
+          .positive({ error: "Stock 0'dan büyük olmak zorundadır" }),
+        prices: z
+          .array(ProductPriceSchema, {
+            error: "Ürün fiyatlarını giriniz",
+          })
+          .refine(
+            (prices) => prices.some((price) => price.currency === "TRY"),
+            {
+              error: "En az bir fiyat Türk Lirası (TRY) olarak tanımlanmalıdır",
+            }
+          )
+          .refine(
+            (prices) => {
+              const currencies = new Set();
+              for (const price of prices) {
+                if (currencies.has(price.currency)) {
+                  return false; // Aynı currency birden fazla kez bulundu
+                }
+                currencies.add(price.currency);
+              }
+              return true;
+            },
+            {
+              error: "Her para birimi için sadece bir fiyat tanımlanabilir",
+            }
+          ),
+        translations: z
+          .array(
+            ProductTranslationSchema.pick({
+              shortDescription: true,
+              description: true,
+              locale: true,
+              metaTitle: true,
+              metaDescription: true,
+            })
+          )
+          .refine(
+            (translations) => {
+              return translations.some(
+                (translation) => translation.locale === "TR"
+              );
+            },
+            { error: "En az bir çeviri Türkçe dilinde olmalıdır" }
+          )
+          .refine(
+            (translations) => {
+              // Her locale'nin sadece bir kez kullanıldığını kontrol et
+              const locales = new Set();
+
+              for (const translation of translations) {
+                if (locales.has(translation.locale)) {
+                  return false; // Aynı locale birden fazla kez bulundu
+                }
+                locales.add(translation.locale);
+              }
+
+              return true;
+            },
+            {
+              message: "Her dil için sadece bir çeviri tanımlanabilir",
+            }
+          ),
+      })
+    )
+    .refine(
+      (variants) => {
+        return variants.length > 0;
+      },
+      {
+        error: "En az bir varyant tanımlanmalıdır",
+      }
+    )
+    .refine(
+      (variants) => {
+        const uniqueSkus = new Set();
+        for (const variant of variants) {
+          if (variant.sku) {
+            if (uniqueSkus.has(variant.sku)) {
+              return false; // Aynı SKU birden fazla kez bulundu
+            }
+            uniqueSkus.add(variant.sku);
+          }
+        }
+        return true;
+      },
+      {
+        error: "Her varyant için benzersiz bir SKU tanımlanmalıdır",
+      }
+    )
+    .refine(
+      (variants) => {
+        const uniqueBarcodes = new Set();
+        for (const variant of variants) {
+          if (variant.barcode) {
+            if (uniqueBarcodes.has(variant.barcode)) {
+              return false; // Aynı barkod birden fazla kez bulundu
+            }
+            uniqueBarcodes.add(variant.barcode);
+          }
+        }
+        return true;
+      },
+      {
+        error: "Her varyant için benzersiz bir barkod tanımlanmalıdır",
+      }
+    ),
+});
+
+export type VariantProduct = z.infer<typeof VariantProductSchema>;

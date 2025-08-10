@@ -12,6 +12,11 @@
   transition: border-color 300ms ease, background 300ms ease,
     box-shadow 300ms ease, transform 200ms ease;
   cursor: pointer;
+  &[data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.6;
+    pointer-events: none;
+  }
 
   &[data-checked] {
     border-color: var(--mantine-color-primary-6);

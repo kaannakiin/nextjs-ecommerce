@@ -18,25 +18,27 @@ import {
   Button,
   ColorPicker,
   ColorSwatch,
-  Combobox,
   DEFAULT_THEME,
   Divider,
   Drawer,
-  DrawerOverlay,
   Group,
-  InputBase,
   Modal,
   Popover,
   Radio,
+  Select,
   SimpleGrid,
   Stack,
   Tabs,
   Text,
   TextInput,
-  useCombobox,
 } from "@mantine/core";
 import { IMAGE_MIME_TYPE } from "@mantine/dropzone";
-import { useDebouncedCallback, useDisclosure } from "@mantine/hooks";
+import {
+  useDebouncedCallback,
+  useDisclosure,
+  UseDisclosureReturnValue,
+} from "@mantine/hooks";
+import { createId } from "@paralleldrive/cuid2";
 import {
   IconCornerDownLeft,
   IconEdit,
@@ -44,7 +46,7 @@ import {
   IconPhoto,
   IconTrash,
 } from "@tabler/icons-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import {
   Controller,
@@ -56,21 +58,27 @@ import styles from "./RadioCard.module.css";
 
 interface VariantFormProps {
   defaultValues?: Variant;
+  openDrawer: UseDisclosureReturnValue;
+  onSubmit?: SubmitHandler<Variant>;
+  isEditing?: boolean; // Yeni prop ekle
 }
 
-const VariantForm = ({ defaultValues }: VariantFormProps) => {
+const VariantForm = ({
+  defaultValues,
+  openDrawer,
+  onSubmit: onSubmitParent,
+  isEditing = false, // Default false
+}: VariantFormProps) => {
   const [comboboxData, setComboboxData] = useState<Variant[]>([]);
-  const [drawerOpened, { open: openDrawer, close: closeDrawer }] =
-    useDisclosure(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState<Record<string, boolean>>({});
   const [activeModalIndex, setActiveModalIndex] = useState<number | null>(null);
   const [colorModalOpened, { open: openColorModal, close: closeColorModal }] =
     useDisclosure(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
   const isAnyPopoverOpen = Object.values(popoverOpen).some(Boolean);
-  const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
-  });
 
   const {
     control,
@@ -78,31 +86,66 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
     handleSubmit,
     setValue,
     watch,
+    reset,
   } = useForm<Variant>({
     resolver: zodResolver(VariantSchema),
     defaultValues: defaultValues || {
+      uniqueId: createId(),
       options: [],
-      translations: [{ locale: "TR", name: "" }],
-      type: "CHOICE",
+      translations: [{ locale: "TR", name: "" }] as Variant["translations"],
+      type: "CHOICE" as Variant["type"],
     },
   });
-
+  useEffect(() => {
+    if (defaultValues && isEditing) {
+      reset(defaultValues);
+    } else if (!isEditing) {
+      reset({
+        uniqueId: createId(),
+        options: [],
+        translations: [{ locale: "TR", name: "" }] as Variant["translations"],
+        type: "CHOICE" as Variant["type"],
+      });
+    }
+  }, [defaultValues, isEditing, reset]);
   const type = watch("type") || "COLOR";
   const watchedFields = watch("options");
-  const search = watch("translations.0.name") || "";
+  const nameValue = watch("translations.0.name");
+  const selectedVariant = comboboxData.find(
+    (variant) =>
+      variant.uniqueId === nameValue ||
+      variant.translations.some(
+        (t) => t.locale === "TR" && t.name === nameValue
+      )
+  );
+
+  const isDbVariant = Boolean(selectedVariant);
+
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: "options",
   });
 
+  useEffect(() => {
+    if (editingIndex !== null && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingIndex]);
+
   const openModalForField = (index: number) => {
-    setActiveModalIndex(index);
-    openColorModal();
+    if (type === "CHOICE") {
+      setEditingIndex(index);
+    } else {
+      setActiveModalIndex(index);
+      openColorModal();
+    }
   };
 
   const handleCloseModal = () => {
     closeColorModal();
     setActiveModalIndex(null);
+    setEditingIndex(null);
   };
 
   const closePopover = (fieldId: string) => {
@@ -115,7 +158,22 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
   const handleDrawerClose = () => {
     setPopoverOpen({});
     handleCloseModal();
-    closeDrawer();
+    openDrawer[1].close();
+
+    // Edit modunda değilse veya defaultValues yoksa temiz form
+    const resetValues =
+      isEditing && defaultValues
+        ? defaultValues
+        : {
+            uniqueId: createId(),
+            options: [],
+            translations: [
+              { locale: "TR", name: "" },
+            ] as Variant["translations"],
+            type: "CHOICE" as Variant["type"],
+          };
+
+    reset(resetValues);
   };
 
   const activeField =
@@ -137,50 +195,42 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
     }
   }, 500);
 
-  const exactOptionMatch = comboboxData.some(
-    (item) =>
-      item.translations
-        .find((translation) => translation.locale === "TR")
-        ?.name.toLowerCase() === search.toLowerCase().trim()
-  );
+  const handleEditSave = (index: number, newName: string) => {
+    if (newName.trim()) {
+      setValue(`options.${index}.translations.0.name`, newName.trim(), {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
+    }
+    setEditingIndex(null);
+  };
 
-  const filteredOptions = exactOptionMatch
-    ? comboboxData
-    : comboboxData.filter((item) =>
-        item.translations.find((translation) =>
-          translation.name.toLowerCase().includes(search.toLowerCase().trim())
-        )
-      );
-
-  const options = filteredOptions
-    .map((variant, index) => {
-      if (!variant.uniqueId) {
-        return null;
-      }
-      return (
-        <Combobox.Option key={variant.uniqueId} value={variant.uniqueId}>
-          {variant.translations.find((t) => t.locale === "TR")?.name ||
-            variant.translations[0]?.name ||
-            "Varyant Adı"}
-        </Combobox.Option>
-      );
-    })
-    .filter(Boolean); // null değerleri filtrele
-
-  const onSubmit: SubmitHandler<Variant> = async (data) => {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const onSubmit: SubmitHandler<Variant> = (data) => {
+    if (onSubmitParent) {
+      onSubmitParent(data);
+      handleDrawerClose();
+    }
   };
 
   return (
     <>
       <Drawer.Root
         onClose={handleDrawerClose}
-        opened={drawerOpened}
+        opened={openDrawer[0]}
         position="right"
         size={"lg"}
+        transitionProps={{
+          transition: "slide-left",
+          duration: 300,
+          timingFunction: "linear",
+        }}
         pos={"relative"}
-        closeOnEscape={!colorModalOpened && !isAnyPopoverOpen}
-        closeOnClickOutside={!colorModalOpened && !isAnyPopoverOpen}
+        closeOnEscape={
+          !colorModalOpened && !isAnyPopoverOpen && editingIndex === null
+        }
+        closeOnClickOutside={
+          !colorModalOpened && !isAnyPopoverOpen && editingIndex === null
+        }
       >
         <Drawer.Overlay />
         <Drawer.Content>
@@ -209,191 +259,251 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                   Kaydet
                 </Button>
               </Group>
-              <Combobox
-                store={combobox}
-                withinPortal={false} // VEYA bu satırı tamamen kaldırın (varsayılanı false'tur)
-                zIndex={10002}
-                position="bottom-start"
-                onOptionSubmit={(value) => {
-                  console.log("Selected option:", value);
-                  combobox.closeDropdown();
-                }}
-              >
-                <Combobox.Target>
-                  <Controller
-                    control={control}
-                    name="translations.0.name"
-                    render={({ field, fieldState }) => (
-                      <InputBase
-                        error={fieldState.error?.message}
-                        value={field.value}
-                        onBlur={() => {
-                          combobox.closeDropdown();
-                          field.onBlur();
-                        }}
-                        onClick={() => combobox.openDropdown()}
-                        onFocus={() => combobox.openDropdown()}
-                        onChange={(e) => {
-                          combobox.openDropdown();
-                          combobox.updateSelectedOptionIndex();
-                          field.onChange(e.currentTarget.value);
-                          handleChange(e.currentTarget.value);
-                        }}
-                        label="Varyant Türü Adı"
-                        withAsterisk
-                        placeholder="e.g: Renk, Beden"
-                      />
-                    )}
-                  />
-                </Combobox.Target>
-                <Combobox.Options>
-                  {options}
-                  {!exactOptionMatch && search.trim().length > 0 && (
-                    <Combobox.Option value="$create">
-                      + {search}
-                    </Combobox.Option>
-                  )}
-                </Combobox.Options>
-              </Combobox>
+              <Controller
+                control={control}
+                name={`translations.0.name`}
+                render={({ field, fieldState }) => {
+                  return (
+                    <Select
+                      label="Varyant Türü Adı"
+                      withAsterisk
+                      data-autofocus
+                      {...field}
+                      error={fieldState.error?.message}
+                      searchable
+                      searchValue={field.value}
+                      clearable
+                      disabled={isDbVariant}
+                      placeholder={
+                        isDbVariant
+                          ? "Seçili varyant (değiştirilemez)"
+                          : "Varyant ara veya yeni ekle"
+                      }
+                      onClear={() => {
+                        field.onChange("");
+                        setComboboxData([]);
+                        reset({
+                          uniqueId: createId(),
+                          options: [],
+                          translations: [
+                            { locale: "TR", name: "" },
+                          ] as Variant["translations"],
+                          type: "CHOICE" as Variant["type"],
+                        });
+                      }}
+                      data={comboboxData
+                        .filter(
+                          (val) =>
+                            val.uniqueId !== null && val.uniqueId !== undefined
+                        )
+                        .map((value) => ({
+                          value:
+                            value.translations.find(
+                              (translation) => translation.locale === "TR"
+                            )?.name ||
+                            value.translations[0]?.name ||
+                            "Varyant Adı",
+                          label:
+                            value.translations.find(
+                              (translation) => translation.locale === "TR"
+                            )?.name ||
+                            value.translations[0]?.name ||
+                            "Varyant Adı",
+                        }))}
+                      onSearchChange={(searchValue) => {
+                        if (!isDbVariant) {
+                          field.onChange(searchValue.trim());
+                          setValue(`translations.0.name`, searchValue.trim());
+                          handleChange(searchValue.trim());
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!isDbVariant) {
+                          field.onChange(field.value.trim());
+                          setValue(`translations.0.name`, field.value.trim());
+                          handleChange(field.value.trim());
+                        }
+                      }}
+                      onChange={(value) => {
+                        if (!value) return;
 
+                        const exactVariant = comboboxData.find((variant) =>
+                          variant.translations.some(
+                            (t) => t.locale === "TR" && t.name === value
+                          )
+                        );
+
+                        if (exactVariant) {
+                          reset({
+                            ...exactVariant,
+                          });
+                        } else {
+                          field.onChange(value);
+                        }
+                      }}
+                    />
+                  );
+                }}
+              />
               <Controller
                 control={control}
                 name="type"
-                render={({ field }) => (
-                  <Radio.Group {...field}>
-                    <SimpleGrid cols={{ xs: 1, md: 2 }}>
-                      <Radio.Card
-                        value={VariantType.CHOICE}
-                        className={styles.root}
-                      >
-                        <Group wrap="nowrap" align="flex-start" gap={"xs"}>
-                          <Radio.Indicator
-                            variant="outline"
-                            color={"primary"}
-                          />
-                          <div style={{ width: "100%" }}>
-                            <Text className="font-bold text-base leading-tight text-gray-900 dark:text-white">
-                              Liste
-                            </Text>
-                            <Group
-                              mt="sm"
-                              gap="xs"
-                              align="center"
-                              wrap="nowrap"
-                            >
-                              <div
-                                style={{
-                                  padding: "6px 12px",
-                                  border: "1px solid #ddd",
-                                  borderRadius: "4px",
-                                  fontSize: "12px",
-                                  backgroundColor: "white",
-                                  minWidth: "80px",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "space-between",
-                                  position: "relative",
-                                }}
+                render={({ field, fieldState }) => {
+                  return (
+                    <Radio.Group {...field} error={fieldState.error?.message}>
+                      <SimpleGrid cols={{ xs: 1, md: 2 }}>
+                        <Radio.Card
+                          disabled={isDbVariant}
+                          value={VariantType.CHOICE}
+                          className={styles.root}
+                          style={{
+                            opacity: isDbVariant ? 0.6 : 1,
+                            cursor: isDbVariant ? "not-allowed" : "pointer",
+                            pointerEvents: isDbVariant ? "none" : "auto",
+                            backgroundColor: isDbVariant
+                              ? "#f8f9fa"
+                              : undefined,
+                            borderColor: isDbVariant ? "#dee2e6" : undefined,
+                          }}
+                        >
+                          <Group wrap="nowrap" align="flex-start" gap={"xs"}>
+                            <Radio.Indicator
+                              variant="outline"
+                              color={"primary"}
+                            />
+                            <div style={{ width: "100%" }}>
+                              <Text className="font-bold text-base leading-tight text-gray-900 dark:text-white">
+                                Liste
+                              </Text>
+                              <Group
+                                mt="sm"
+                                gap="xs"
+                                align="center"
+                                wrap="nowrap"
                               >
-                                XL
-                                <svg
-                                  width="12"
-                                  height="12"
-                                  viewBox="0 0 12 12"
-                                  style={{ marginLeft: "8px" }}
+                                <div
+                                  style={{
+                                    padding: "6px 12px",
+                                    border: "1px solid #ddd",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                    backgroundColor: "white",
+                                    minWidth: "80px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "space-between",
+                                    position: "relative",
+                                  }}
                                 >
-                                  <path
-                                    d="M3 4.5L6 7.5L9 4.5"
-                                    stroke="#666"
-                                    strokeWidth="1.5"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                  />
-                                </svg>
-                              </div>
-                              <div
-                                style={{
-                                  padding: "4px 8px",
-                                  border: "1px solid #ddd",
-                                  backgroundColor: "white",
-                                  borderRadius: "4px",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                S
-                              </div>
-                              <div
-                                style={{
-                                  padding: "4px 8px",
-                                  backgroundColor: "white",
-                                  border: "1px solid #ddd",
-                                  borderRadius: "4px",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                M
-                              </div>
-                            </Group>
-                          </div>
-                        </Group>
-                      </Radio.Card>
+                                  XL
+                                  <svg
+                                    width="12"
+                                    height="12"
+                                    viewBox="0 0 12 12"
+                                    style={{ marginLeft: "8px" }}
+                                  >
+                                    <path
+                                      d="M3 4.5L6 7.5L9 4.5"
+                                      stroke="#666"
+                                      strokeWidth="1.5"
+                                      fill="none"
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                    />
+                                  </svg>
+                                </div>
+                                <div
+                                  style={{
+                                    padding: "4px 8px",
+                                    border: "1px solid #ddd",
+                                    backgroundColor: "white",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                  }}
+                                >
+                                  S
+                                </div>
+                                <div
+                                  style={{
+                                    padding: "4px 8px",
+                                    backgroundColor: "white",
+                                    border: "1px solid #ddd",
+                                    borderRadius: "4px",
+                                    fontSize: "12px",
+                                  }}
+                                >
+                                  M
+                                </div>
+                              </Group>
+                            </div>
+                          </Group>
+                        </Radio.Card>
 
-                      <Radio.Card
-                        value={VariantType.COLOR}
-                        className={styles.root}
-                      >
-                        <Group wrap="nowrap" align="flex-start" gap={"xs"}>
-                          <Radio.Indicator
-                            variant="outline"
-                            color={"primary"}
-                          />
-                          <div style={{ width: "100%" }}>
-                            <Text className="font-bold text-base leading-tight text-gray-900 dark:text-white">
-                              Renk / Görsel
-                            </Text>
-                            <Group mt="sm" gap="xs">
-                              <div
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "white",
-                                  border: "1px solid #ddd",
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "#64748b",
-                                  border: "1px solid #ddd",
-                                }}
-                              ></div>
-                              <div
-                                style={{
-                                  width: "32px",
-                                  height: "32px",
-                                  borderRadius: "50%",
-                                  backgroundColor: "white",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  color: "#666",
-                                }}
-                              >
-                                <IconPhoto size={24} />
-                              </div>
-                            </Group>
-                          </div>
-                        </Group>
-                      </Radio.Card>
-                    </SimpleGrid>
-                  </Radio.Group>
-                )}
+                        <Radio.Card
+                          style={{
+                            opacity: isDbVariant ? 0.6 : 1,
+                            cursor: isDbVariant ? "not-allowed" : "pointer",
+                            pointerEvents: isDbVariant ? "none" : "auto",
+                            backgroundColor: isDbVariant
+                              ? "#f8f9fa"
+                              : undefined,
+                            borderColor: isDbVariant ? "#dee2e6" : undefined,
+                          }}
+                          disabled={isDbVariant}
+                          value={VariantType.COLOR}
+                          className={styles.root}
+                        >
+                          <Group wrap="nowrap" align="flex-start" gap={"xs"}>
+                            <Radio.Indicator
+                              variant="outline"
+                              color={"primary"}
+                            />
+                            <div style={{ width: "100%" }}>
+                              <Text className="font-bold text-base leading-tight text-gray-900 dark:text-white">
+                                Renk / Görsel
+                              </Text>
+                              <Group mt="sm" gap="xs">
+                                <div
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "white",
+                                    border: "1px solid #ddd",
+                                  }}
+                                ></div>
+                                <div
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "#64748b",
+                                    border: "1px solid #ddd",
+                                  }}
+                                ></div>
+                                <div
+                                  style={{
+                                    width: "32px",
+                                    height: "32px",
+                                    borderRadius: "50%",
+                                    backgroundColor: "white",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: "#666",
+                                  }}
+                                >
+                                  <IconPhoto size={24} />
+                                </div>
+                              </Group>
+                            </div>
+                          </Group>
+                        </Radio.Card>
+                      </SimpleGrid>
+                    </Radio.Group>
+                  );
+                }}
               />
-
               <TextInput
                 label="Varyant"
                 withAsterisk
@@ -406,9 +516,9 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                     setErrorMessage(null);
                     const value = (e.target as HTMLInputElement).value.trim();
                     if (value) {
-                      if (value.length < 3) {
+                      if (value.length < 1) {
                         setErrorMessage(
-                          "Varyant adı en az 3 karakter olmalıdır."
+                          "Varyant adı en az 1 karakter olmalıdır."
                         );
                         setTimeout(() => {
                           setErrorMessage(null);
@@ -433,14 +543,13 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                         value: "#000000",
                         image: null,
                         existingImages: null,
-                        uniqueId: null,
+                        uniqueId: createId(),
                       });
                       (e.target as HTMLInputElement).value = "";
                     }
                   }
                 }}
               />
-
               <DragDropContext
                 onDragEnd={({ destination, source }) => {
                   if (!destination || destination.index === source.index) {
@@ -492,11 +601,14 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                         const trTranslations =
                           field.translations.find((t) => t.locale === "TR") ||
                           field.translations[0];
+                        const isEditing = editingIndex === index;
+
                         return (
                           <Draggable
                             key={field.id}
                             index={index}
                             draggableId={field.id}
+                            isDragDisabled={isEditing}
                           >
                             {(provided, snapshot) => (
                               <Group
@@ -518,7 +630,7 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                                   transition: "all 0.2s ease",
                                 }}
                                 onMouseEnter={(e) => {
-                                  if (!snapshot.isDragging) {
+                                  if (!snapshot.isDragging && !isEditing) {
                                     e.currentTarget.style.background =
                                       "rgba(249, 250, 251, 1)";
                                     e.currentTarget.style.borderColor =
@@ -526,7 +638,7 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                                   }
                                 }}
                                 onMouseLeave={(e) => {
-                                  if (!snapshot.isDragging) {
+                                  if (!snapshot.isDragging && !isEditing) {
                                     e.currentTarget.style.background =
                                       "transparent";
                                     e.currentTarget.style.borderColor =
@@ -534,25 +646,30 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                                   }
                                 }}
                               >
-                                <Group gap={"xs"}>
+                                <Group gap={"xs"} style={{ flex: 1 }}>
                                   <div
                                     {...provided.dragHandleProps}
                                     style={{
-                                      cursor: "grab",
+                                      cursor: isEditing ? "default" : "grab",
                                       padding: "4px",
                                       borderRadius: "4px",
                                       color: "#6b7280",
                                       transition: "all 0.2s ease",
+                                      opacity: isEditing ? 0.5 : 1,
                                     }}
                                     onMouseEnter={(e) => {
-                                      e.currentTarget.style.background =
-                                        "rgba(59, 130, 246, 0.1)";
-                                      e.currentTarget.style.color = "#3b82f6";
+                                      if (!isEditing) {
+                                        e.currentTarget.style.background =
+                                          "rgba(59, 130, 246, 0.1)";
+                                        e.currentTarget.style.color = "#3b82f6";
+                                      }
                                     }}
                                     onMouseLeave={(e) => {
-                                      e.currentTarget.style.background =
-                                        "transparent";
-                                      e.currentTarget.style.color = "#6b7280";
+                                      if (!isEditing) {
+                                        e.currentTarget.style.background =
+                                          "transparent";
+                                        e.currentTarget.style.color = "#6b7280";
+                                      }
                                     }}
                                   >
                                     <IconGripVertical size={20} />
@@ -627,77 +744,123 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
                                       )}
                                     </div>
                                   )}
-                                  <Text fw={400} c="gray.8">
-                                    {trTranslations.name}
-                                  </Text>
-                                </Group>
-                                <Group gap={"xs"}>
-                                  <ActionIcon
-                                    variant="subtle"
-                                    color="gray"
-                                    size="sm"
-                                    onClick={() => openModalForField(index)}
-                                  >
-                                    <IconEdit size={16} />
-                                  </ActionIcon>
-                                  <Popover
-                                    opened={popoverOpen[field.id] || false}
-                                    onChange={(opened) =>
-                                      setPopoverOpen((prev) => ({
-                                        ...prev,
-                                        [field.id]: opened,
-                                      }))
-                                    }
-                                    width={300}
-                                    position="top-end"
-                                    withArrow
-                                    arrowSize={12}
-                                    shadow="lg"
-                                    closeOnEscape={!colorModalOpened}
-                                  >
-                                    <Popover.Target>
-                                      <ActionIcon
-                                        variant="subtle"
-                                        color="gray"
-                                        size="sm"
-                                        onClick={() =>
-                                          setPopoverOpen((prev) => ({
-                                            ...prev,
-                                            [field.id]: !prev[field.id],
-                                          }))
+
+                                  {isEditing ? (
+                                    <TextInput
+                                      ref={editInputRef}
+                                      defaultValue={trTranslations.name}
+                                      size="sm"
+                                      style={{ flex: 1 }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleEditSave(
+                                            index,
+                                            e.currentTarget.value
+                                          );
+                                        } else if (e.key === "Escape") {
+                                          setEditingIndex(null);
                                         }
-                                      >
-                                        <IconTrash size={16} />
-                                      </ActionIcon>
-                                    </Popover.Target>
-                                    <Popover.Dropdown>
-                                      <Text fw={700} size="sm">
-                                        Bu varyantı silmek istediğinize emin
-                                        misiniz?
-                                      </Text>
-                                      <Divider my={"sm"} />
-                                      <Group gap={"md"} grow={true}>
-                                        <Button
-                                          onClick={() => closePopover(field.id)}
-                                          variant="outline"
-                                          size="xs"
-                                        >
-                                          Hayır
-                                        </Button>
-                                        <Button
-                                          color={"red"}
-                                          onClick={() => {
-                                            remove(index);
-                                            closePopover(field.id);
-                                          }}
-                                          size="xs"
-                                        >
-                                          Evet
-                                        </Button>
-                                      </Group>
-                                    </Popover.Dropdown>
-                                  </Popover>
+                                      }}
+                                      onBlur={(e) => {
+                                        handleEditSave(
+                                          index,
+                                          e.currentTarget.value
+                                        );
+                                      }}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                    <Text
+                                      fw={400}
+                                      c="gray.8"
+                                      style={{
+                                        cursor:
+                                          type === "CHOICE"
+                                            ? "pointer"
+                                            : "default",
+                                        flex: 1,
+                                      }}
+                                      onClick={() => {
+                                        setEditingIndex(index);
+                                      }}
+                                    >
+                                      {trTranslations.name}
+                                    </Text>
+                                  )}
                                 </Group>
+
+                                {!isEditing && (
+                                  <Group gap={"xs"}>
+                                    <ActionIcon
+                                      variant="subtle"
+                                      color="gray"
+                                      size="sm"
+                                      onClick={() => openModalForField(index)}
+                                    >
+                                      <IconEdit size={16} />
+                                    </ActionIcon>
+                                    <Popover
+                                      opened={popoverOpen[field.id] || false}
+                                      onChange={(opened) =>
+                                        setPopoverOpen((prev) => ({
+                                          ...prev,
+                                          [field.id]: opened,
+                                        }))
+                                      }
+                                      width={300}
+                                      position="top-end"
+                                      withArrow
+                                      arrowSize={12}
+                                      shadow="lg"
+                                      closeOnEscape={!colorModalOpened}
+                                    >
+                                      <Popover.Target>
+                                        <ActionIcon
+                                          variant="subtle"
+                                          color="gray"
+                                          size="sm"
+                                          onClick={() =>
+                                            setPopoverOpen((prev) => ({
+                                              ...prev,
+                                              [field.id]: !prev[field.id],
+                                            }))
+                                          }
+                                        >
+                                          <IconTrash size={16} />
+                                        </ActionIcon>
+                                      </Popover.Target>
+                                      <Popover.Dropdown>
+                                        <Text fw={700} size="sm">
+                                          Bu varyantı silmek istediğinize emin
+                                          misiniz?
+                                        </Text>
+                                        <Divider my={"sm"} />
+                                        <Group gap={"md"} grow={true}>
+                                          <Button
+                                            onClick={() =>
+                                              closePopover(field.id)
+                                            }
+                                            variant="outline"
+                                            size="xs"
+                                          >
+                                            Hayır
+                                          </Button>
+                                          <Button
+                                            color={"red"}
+                                            onClick={() => {
+                                              remove(index);
+                                              closePopover(field.id);
+                                            }}
+                                            size="xs"
+                                          >
+                                            Evet
+                                          </Button>
+                                        </Group>
+                                      </Popover.Dropdown>
+                                    </Popover>
+                                  </Group>
+                                )}
                               </Group>
                             )}
                           </Draggable>
@@ -713,7 +876,7 @@ const VariantForm = ({ defaultValues }: VariantFormProps) => {
         </Drawer.Content>
       </Drawer.Root>
 
-      {activeModalIndex !== null && (
+      {activeModalIndex !== null && type === "COLOR" && (
         <Modal
           opened={colorModalOpened}
           onClose={handleCloseModal}

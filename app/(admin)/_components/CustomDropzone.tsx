@@ -1,83 +1,55 @@
 "use client";
 
+import { AssetType } from "@/app/generated/prisma";
 import {
+  ActionIcon,
+  Alert,
   AspectRatio,
   Group,
   SimpleGrid,
-  Text,
-  ActionIcon,
-  Alert,
   SimpleGridProps,
+  Text,
+  Popover,
+  Button,
+  Stack,
 } from "@mantine/core";
 import { Dropzone, DropzoneProps, FileRejection } from "@mantine/dropzone";
 import {
+  IconAlertCircle,
   IconPhoto,
+  IconTrash,
   IconUpload,
   IconX,
-  IconTrash,
-  IconAlertCircle,
+  IconCheck,
 } from "@tabler/icons-react";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface CustomDropzoneProps extends DropzoneProps {
   label: string;
   value: File[] | null;
   onRemove?: (index: number) => void;
   cols?: SimpleGridProps["cols"];
+  existingImages?: { url: string; type: AssetType }[];
+  onRemoveExisting?: (index: number, imageUrl: string) => void;
 }
 
 const CustomDropzone = ({
   label,
   value,
   onRemove,
-  cols = { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 }, // Varsayılan kolon sayıları
+  cols = { xs: 2, sm: 3, md: 4, lg: 5, xl: 6 },
+  existingImages = [],
+  onRemoveExisting,
   ...props
 }: CustomDropzoneProps) => {
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
-
-  const formatTranslations: Record<string, string> = {
-    // Resim formatları
-    jpeg: "JPEG",
-    jpg: "JPG",
-    png: "PNG",
-    gif: "GIF",
-    webp: "WebP",
-    svg: "SVG",
-    bmp: "BMP",
-    tiff: "TIFF",
-
-    // Belge formatları
-    pdf: "PDF",
-    doc: "Word",
-    docx: "Word",
-    txt: "Metin",
-    rtf: "RTF",
-
-    // Tablo formatları
-    xls: "Excel",
-    xlsx: "Excel",
-    csv: "CSV",
-
-    // Sunum formatları
-    ppt: "PowerPoint",
-    pptx: "PowerPoint",
-
-    mp3: "MP3",
-    wav: "WAV",
-    ogg: "OGG",
-
-    // Video formatları
-    mp4: "MP4",
-    avi: "AVI",
-    mov: "MOV",
-    webm: "WebM",
-
-    // Arşiv formatları
-    zip: "ZIP",
-    rar: "RAR",
-    "7z": "7Z",
-  };
+  const [deletePopover, setDeletePopover] = useState<{
+    open: boolean;
+    type: "existing" | "new";
+    index: number;
+    imageUrl?: string;
+  }>({ open: false, type: "new", index: -1 });
 
   const errorTranslations: Record<string, string> = {
     "file-invalid-type": "Desteklenmeyen dosya formatı",
@@ -101,7 +73,6 @@ const CustomDropzone = ({
             : "5";
           errors.push(`${fileName}: ${translatedError} (Max: ${maxSizeMB}MB)`);
         } else if (error.code === "too-many-files") {
-          // Çok fazla dosya hatası için sadece bir kez ekle
           if (!tooManyFilesError) {
             const maxFiles = props.maxFiles || "sınırsız";
             errors.push(`${translatedError} (Max: ${maxFiles} dosya)`);
@@ -115,45 +86,31 @@ const CustomDropzone = ({
 
     setErrorMessages(errors);
 
-    // 3 saniye sonra hata mesajlarını temizle
     setTimeout(() => {
       setErrorMessages([]);
     }, 3000);
 
-    // Eğer parent component'te onReject prop'u varsa onu da çağır
     if (props.onReject) {
       props.onReject(fileRejections);
     }
   };
 
-  const getFormattedAcceptedTypes = () => {
-    if (!Array.isArray(props?.accept)) {
-      return "Desteklenen Dosyalar";
+  const handleDeleteExisting = (index: number, imageUrl: string) => {
+    if (onRemoveExisting) {
+      onRemoveExisting(index, imageUrl);
     }
-
-    const formats = props.accept
-      .map((type: string) => {
-        const extension = type.split("/")[1];
-        return formatTranslations[extension] || extension.toUpperCase();
-      })
-      .filter(Boolean);
-
-    if (formats.length === 0) {
-      return "Desteklenen Dosyalar";
-    }
-
-    if (formats.length === 1) {
-      return formats[0];
-    }
-
-    if (formats.length === 2) {
-      return `${formats[0]} ve ${formats[1]}`;
-    }
-
-    // 3 veya daha fazla format için
-    const lastFormat = formats.pop();
-    return `${formats.join(", ")} ve ${lastFormat}`;
+    setDeletePopover({ open: false, type: "new", index: -1 });
   };
+
+  const handleDeleteNew = (index: number) => {
+    if (onRemove) {
+      onRemove(index);
+    }
+    setDeletePopover({ open: false, type: "new", index: -1 });
+  };
+
+  const totalImages = existingImages.length + (value?.length || 0);
+  const hasImages = totalImages > 0;
 
   return (
     <div className="flex flex-col gap-1">
@@ -161,7 +118,6 @@ const CustomDropzone = ({
         {label}
       </Text>
 
-      {/* Hata mesajları */}
       {errorMessages.length > 0 && (
         <div className="space-y-2">
           {errorMessages.map((error, index) => (
@@ -210,8 +166,8 @@ const CustomDropzone = ({
           </Dropzone.Idle>
 
           <div>
-            <Text size="xl" inline>
-              {getFormattedAcceptedTypes()}
+            <Text size="md" inline>
+              Medya yüklemek için tıklayın ya da bu alana sürükleyin
             </Text>
             <Text size="sm" c="dimmed" inline mt={7}>
               {props?.maxFiles
@@ -225,50 +181,234 @@ const CustomDropzone = ({
         </Group>
       </Dropzone>
 
-      {value && value.length > 0 && (
+      {hasImages && (
         <SimpleGrid cols={cols} mt="md">
-          {value.map((file, index) => (
+          {existingImages.map((image, index) => (
             <AspectRatio
               ratio={1}
-              key={index}
-              className="relative overflow-hidden rounded-lg !bg-gray-100"
+              key={`existing-${index}`}
+              className="relative overflow-hidden rounded-lg "
               style={{ height: "200px" }}
             >
-              {onRemove && (
-                <ActionIcon
-                  variant="filled"
-                  color="red"
-                  size="sm"
-                  className="absolute z-10"
-                  style={{
-                    top: "8px",
-                    left: "8px",
-                    width: "28px",
-                    height: "28px",
-                    minWidth: "28px",
-                    minHeight: "28px",
+              {onRemoveExisting && (
+                <Popover
+                  opened={
+                    deletePopover.open &&
+                    deletePopover.type === "existing" &&
+                    deletePopover.index === index
+                  }
+                  onClose={() =>
+                    setDeletePopover({ open: false, type: "new", index: -1 })
+                  }
+                  onDismiss={() => {
+                    setDeletePopover({ open: false, type: "new", index: -1 });
                   }}
-                  onClick={() => onRemove(index)}
+                  position="top"
+                  withArrow
                 >
-                  <IconTrash size={14} />
-                </ActionIcon>
+                  <Popover.Target>
+                    <ActionIcon
+                      variant="filled"
+                      color="red"
+                      size="sm"
+                      className="absolute z-10"
+                      style={{
+                        top: "8px",
+                        left: "8px",
+                        width: "28px",
+                        height: "28px",
+                        minWidth: "28px",
+                        minHeight: "28px",
+                      }}
+                      onClick={() =>
+                        setDeletePopover({
+                          open: true,
+                          type: "existing",
+                          index,
+                          imageUrl: image.url,
+                        })
+                      }
+                    >
+                      <IconTrash size={14} />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown
+                    className="border-[var(--mantine-color-primary-6)]"
+                    p={"md"}
+                  >
+                    <Stack gap="xs">
+                      <Text size="sm" fw={500}>
+                        Resmi silmek istiyor musunuz?
+                      </Text>
+                      <Group gap="xs" justify="flex-end">
+                        {" "}
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() =>
+                            setDeletePopover({
+                              open: false,
+                              type: "new",
+                              index: -1,
+                            })
+                          }
+                        >
+                          Hayır
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="filled"
+                          color="red"
+                          onClick={() => handleDeleteExisting(index, image.url)}
+                        >
+                          Evet
+                        </Button>
+                      </Group>
+                    </Stack>
+                  </Popover.Dropdown>
+                </Popover>
               )}
 
-              {file.type.startsWith("image/") ? (
+              {image.type === "IMAGE" ? (
                 <Image
                   fill
-                  src={URL.createObjectURL(file)}
-                  alt={file.name}
+                  src={image.url}
+                  alt="Mevcut resim"
                   style={{ objectFit: "contain" }}
                   className="object-contain h-full w-full"
                 />
               ) : (
                 <video
-                  src={URL.createObjectURL(file)}
+                  src={image.url}
                   className="object-contain h-full w-full"
                   muted
                 />
               )}
+            </AspectRatio>
+          ))}
+
+          {value?.map((file, index) => (
+            <AspectRatio
+              ratio={1}
+              key={`new-${index}`}
+              className="relative overflow-hidden rounded-lg"
+              style={{ height: "200px" }}
+            >
+              {onRemove && (
+                <Popover
+                  opened={
+                    deletePopover.open &&
+                    deletePopover.type === "new" &&
+                    deletePopover.index === index
+                  }
+                  onClose={() =>
+                    setDeletePopover({ open: false, type: "new", index: -1 })
+                  }
+                  onDismiss={() => {
+                    setDeletePopover({ open: false, type: "new", index: -1 });
+                  }}
+                  position="top"
+                  withArrow
+                >
+                  <Popover.Target>
+                    <ActionIcon
+                      variant="filled"
+                      color="red"
+                      size="sm"
+                      className="absolute z-10"
+                      style={{
+                        top: "8px",
+                        left: "8px",
+                        width: "28px",
+                        height: "28px",
+                        minWidth: "28px",
+                        minHeight: "28px",
+                      }}
+                      onClick={() =>
+                        setDeletePopover({
+                          open: true,
+                          type: "new",
+                          index,
+                        })
+                      }
+                    >
+                      <IconTrash size={14} />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown
+                    className="border-[var(--mantine-color-primary-6)]"
+                    p={"md"}
+                  >
+                    <Stack gap="xs">
+                      <Text size="sm" fw={500}>
+                        Resmi silmek istiyor musunuz?
+                      </Text>
+                      <Group gap="xs" align="flex-end" justify="flex-end">
+                        {" "}
+                        <Button
+                          size="xs"
+                          variant="outline"
+                          onClick={() =>
+                            setDeletePopover({
+                              open: false,
+                              type: "new",
+                              index: -1,
+                            })
+                          }
+                        >
+                          Hayır
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="filled"
+                          color="red"
+                          onClick={() => handleDeleteNew(index)}
+                        >
+                          Evet
+                        </Button>
+                      </Group>
+                    </Stack>
+                  </Popover.Dropdown>
+                </Popover>
+              )}
+
+              {(() => {
+                if (!file) return null;
+
+                const fileType = file.type || "";
+                const isImage = fileType.startsWith("image/");
+                const isVideo = fileType.startsWith("video/");
+
+                if (isImage) {
+                  return (
+                    <Image
+                      fill
+                      src={URL.createObjectURL(file)}
+                      alt={file.name || "Image"}
+                      style={{ objectFit: "contain" }}
+                      className="object-contain h-full w-full"
+                    />
+                  );
+                }
+
+                if (isVideo) {
+                  return (
+                    <video
+                      src={URL.createObjectURL(file)}
+                      className="object-contain h-full w-full"
+                      muted
+                    />
+                  );
+                }
+
+                return (
+                  <div className="flex items-center justify-center h-full bg-gray-100">
+                    <Text size="sm" c="dimmed">
+                      Desteklenmeyen dosya tipi
+                    </Text>
+                  </div>
+                );
+              })()}
             </AspectRatio>
           ))}
         </SimpleGrid>

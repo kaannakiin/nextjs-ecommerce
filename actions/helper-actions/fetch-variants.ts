@@ -8,7 +8,7 @@ export async function fetchVariants(search: string): Promise<{
   variants?: Variant[];
 }> {
   try {
-    if (!search || search.length < 3 || search.trim() === "") {
+    if (!search || search.trim() === "") {
       return { success: false };
     }
 
@@ -39,6 +39,10 @@ export async function fetchVariants(search: string): Promise<{
       },
       include: {
         options: {
+          orderBy: {
+            
+          },
+
           include: {
             translations: true,
             image: {
@@ -66,7 +70,7 @@ export async function fetchVariants(search: string): Promise<{
           })),
           options: variant.options.map((option) => ({
             uniqueId: option.id,
-            value: option.value || "",
+            value: option.colorHex || "",
             translations: option.translations.map((translation) => ({
               locale: translation.locale,
               name: translation.name,
@@ -77,7 +81,7 @@ export async function fetchVariants(search: string): Promise<{
                   type: option.image.type,
                 }
               : null,
-          })),
+          })) as Variant["options"],
         })),
       };
     }

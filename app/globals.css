@@ -1,1 +1,9 @@
-@import "tailwind-preset-mantine";
+@layer theme, base, components, mantine, utilities;
+
+@import "tailwindcss";
+
+@layer mantine {
+  @import "@mantine/core/styles.layer.css";
+  @import "@mantine/dropzone/styles.layer.css";
+  @import "@mantine/notifications/styles.layer.css";
+}

@@ -17,7 +17,7 @@ interface MetaDescriptionProps
 
 interface SeoCardProps<T extends Record<string, any>> {
   control: Control<T>;
-  slugFieldName: FieldPath<T>;
+  slugFieldName?: FieldPath<T>;
   metaTitleFieldName: FieldPath<T>;
   metaDescriptionFieldName: FieldPath<T>;
   slugProps?: SlugProps;
@@ -34,10 +34,12 @@ const SeoCard = <T extends Record<string, any>>({
   metaTitleProps = {},
   metaDescriptionProps = {},
 }: SeoCardProps<T>) => {
-  const slug = useWatch({
-    control,
-    name: slugFieldName,
-  });
+  const slug =
+    slugFieldName &&
+    useWatch({
+      control,
+      name: slugFieldName,
+    });
 
   const metaTitle = useWatch({
     control,
@@ -59,29 +61,31 @@ const SeoCard = <T extends Record<string, any>>({
         }}
       >
         <div className="flex flex-col gap-3">
-          <Controller
-            control={control}
-            name={slugFieldName}
-            render={({ field, fieldState }) => (
-              <div>
-                <TextInput
-                  {...slugProps}
-                  label="Slug"
-                  leftSection={<span className="font-bold">/</span>}
-                  leftSectionProps={{
-                    className: "text-black bg-gray-100",
-                  }}
-                  classNames={{
-                    input: "!pl-10",
-                  }}
-                  value={field.value || ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  error={fieldState.error?.message}
-                />
-              </div>
-            )}
-          />
+          {slugFieldName && (
+            <Controller
+              control={control}
+              name={slugFieldName}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextInput
+                    {...slugProps}
+                    label="Slug"
+                    leftSection={<span className="font-bold">/</span>}
+                    leftSectionProps={{
+                      className: "text-black bg-gray-100",
+                    }}
+                    classNames={{
+                      input: "!pl-10",
+                    }}
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    error={fieldState.error?.message}
+                  />
+                </div>
+              )}
+            />
+          )}
 
           <Controller
             control={control}
@@ -124,12 +128,14 @@ const SeoCard = <T extends Record<string, any>>({
           <Text fz={"md"}>Arama Önizlemesi</Text>
           <Card withBorder shadow="0" p="md" className="bg-white">
             <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1 text-sm">
-                <span className="text-gray-600">https://example.com/</span>
-                <span className="text-blue-600 font-medium">
-                  {slug || "url-slug"}
-                </span>
-              </div>
+              {slugFieldName && (
+                <div className="flex items-center gap-1 text-sm">
+                  <span className="text-gray-600">https://example.com/</span>
+                  <span className="text-blue-600 font-medium">
+                    {slug || "url-slug"}
+                  </span>
+                </div>
+              )}
 
               <div className="text-blue-600 hover:underline cursor-pointer text-xl font-medium mb-1">
                 {metaTitle || "Sayfa Başlığı Buraya Gelecek"}

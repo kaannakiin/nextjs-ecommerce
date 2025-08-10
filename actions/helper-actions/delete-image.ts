@@ -1,41 +1,58 @@
 "use server";
 
-import { Prisma } from "@/app/generated/prisma";
+import prisma from "@/lib/prisma";
 import { ActionResponse } from "@/types/globalTypes";
 import { DeleteObject } from "./minio-actions";
-import prisma from "@/lib/prisma";
 
 interface DeleteImageProps {
   url: string;
+  deleteAsset?: boolean; // Default true
 }
+
+// 🎯 ANA FONKSİYON: DeleteImage
 export async function DeleteImage({
-  ...props
+  url,
+  deleteAsset = true,
 }: DeleteImageProps): Promise<ActionResponse> {
   try {
-    const response = await DeleteObject({ url: props.url });
-    if (!response.success) {
+    // 1. Minio'dan sil
+    const minioResponse = await DeleteObject({ url });
+    if (!minioResponse.success) {
       return {
         success: false,
-        message: "Resim silme işlemi başarısız.",
+        message: "Resim cloud'dan silme işlemi başarısız.",
       };
     }
-    const image = await prisma.asset.delete({
-      where: {
-        url: props.url,
-      },
-    });
-    if (!image) {
+
+    // 2. Eğer deleteAsset true ise veritabanından da sil
+    if (deleteAsset) {
+      const asset = await prisma.asset.findUnique({
+        where: { url },
+      });
+
+      if (!asset) {
+        return {
+          success: false,
+          message: "Resim veritabanında bulunamadı.",
+        };
+      }
+
+      await prisma.asset.delete({
+        where: { id: asset.id },
+      });
+
       return {
-        success: false,
-        message: "Resim bulunamadı.",
+        success: true,
+        message: "Resim tamamen silindi.",
       };
     }
+
     return {
       success: true,
-      message: "Resim başarıyla silindi.",
+      message: "Resim cloud'dan silindi.",
     };
   } catch (error) {
-    console.error("Error deleting image:", error);
+    console.error("❌ Error deleting image:", error);
     return {
       success: false,
       message: "Resim silme işlemi sırasında bir hata oluştu.",

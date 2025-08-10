@@ -10,7 +10,7 @@ import {
   PRODUCT_ASSET_MEDIA_MIME_TYPES,
 } from "@/schemas/product-schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Select, SimpleGrid } from "@mantine/core";
+import { MultiSelect, Select, SimpleGrid } from "@mantine/core";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import GoogleTaxonomySelect from "./GoogleTaxonomySelect";
 import SeoCard from "./SeoCard";
@@ -36,10 +36,7 @@ const BasicProductForm = () => {
     },
   });
 
-  const onSubmit: SubmitHandler<BasicProduct> = async (data) => {
-    console.log("Form submitted with data:", data);
-    console.log("data");
-  };
+  const onSubmit: SubmitHandler<BasicProduct> = async (data) => {};
 
   return (
     <div>
@@ -104,8 +101,10 @@ const BasicProductForm = () => {
           />
           <Controller
             control={control}
-            name="categoryId"
-            render={({ field }) => <Select {...field} />}
+            name="categoryIds"
+            render={({ field }) => (
+              <MultiSelect {...field} value={field.value || []} />
+            )}
           />
         </SimpleGrid>
       </form>

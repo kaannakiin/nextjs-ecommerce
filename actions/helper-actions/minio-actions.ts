@@ -13,7 +13,7 @@ interface UploadFileMinio {
   isNeedThumbnail?: boolean;
 }
 
-interface UploadedFile {
+export interface UploadedFile {
   originalUrl: string;
   ogImageUrl?: string;
   thumbnailUrl?: string;
