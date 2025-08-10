@@ -173,7 +173,6 @@ function createNewVariantCombination(
 
   // Default price structure from Zod schema
   const defaultPrice: ProductPrice = {
-    locale: "TR" as const,
     currency: "TRY" as const,
     price: 0,
     discountedPrice: null,
