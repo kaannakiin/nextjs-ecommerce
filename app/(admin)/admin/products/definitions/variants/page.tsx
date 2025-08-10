@@ -1,11 +1,5 @@
-import VariantForm from "./_components/VariantForm";
-
 const VariantPage = () => {
-  return (
-    <div>
-      <VariantForm />
-    </div>
-  );
+  return <div></div>;
 };
 
 export default VariantPage;
