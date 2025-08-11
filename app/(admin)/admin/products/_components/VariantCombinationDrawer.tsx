@@ -23,6 +23,7 @@ import {
 import SeoCard from "./SeoCard";
 import { DeleteImageFromVariantCombination } from "../_actions/variant-product-action";
 import { notifications } from "@mantine/notifications";
+import { CustomRichTextWrapper } from "@/app/(admin)/_components/CustomRichTextWrapper";
 
 interface VariantCombinationDrawerProps
   extends Pick<DrawerProps, "opened" | "onClose"> {
@@ -169,6 +170,20 @@ const VariantCombinationDrawer = ({
               )}
             />
           </SimpleGrid>
+
+          <div className="my-3">
+            <Controller
+              control={control}
+              name={`variants.${index}.translations.0.description`}
+              render={({ field }) => (
+                <CustomRichTextWrapper
+                  {...field}
+                  value={field.value || undefined}
+                  label="Varyant Açıklaması"
+                />
+              )}
+            />
+          </div>
           <SeoCard
             control={control}
             metaDescriptionFieldName={`variants.${index}.translations.0.metaDescription`}

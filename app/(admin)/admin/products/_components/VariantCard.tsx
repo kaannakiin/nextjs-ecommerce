@@ -975,7 +975,7 @@ const VariantCard = ({ control, setValue, watch }: VariantCardProps) => {
                               max={Number.MAX_SAFE_INTEGER}
                               allowNegative={false}
                               thousandSeparator=","
-                              decimalScale={2}
+                              decimalScale={0}
                             />
                           )}
                         />

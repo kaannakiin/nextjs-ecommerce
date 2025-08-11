@@ -1,6 +1,7 @@
 "use client";
 
 import CustomDropzone from "@/app/(admin)/_components/CustomDropzone";
+import { CustomRichTextWrapper } from "@/app/(admin)/_components/CustomRichTextWrapper";
 import GlobalLoadingOverlay from "@/app/(admin)/_components/GlobalLoadingOverlay";
 import { ProductType } from "@/app/generated/prisma";
 import { getProductTypeLabel } from "@/lib/helper";
@@ -19,24 +20,22 @@ import {
   Group,
   Select,
   SimpleGrid,
-  Stack,
-  Text,
   TextInput,
   Title,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import {
   CreateOrUpdateVariantProduct,
   DeleteImageFromProduct,
 } from "../_actions/variant-product-action";
+import CustomBrandSelect from "./CustomBrandSelect";
 import CustomCategorySelect from "./CustomCategorySelect";
 import GoogleTaxonomySelect from "./GoogleTaxonomySelect";
 import SeoCard from "./SeoCard";
 import VariantCard from "./VariantCard";
-import { useEffect } from "react";
-import { error } from "console";
 
 interface VariantProductFormProps {
   defaultValues?: VariantProduct;
@@ -181,6 +180,17 @@ const VariantProductForm = ({ defaultValues }: VariantProductFormProps) => {
       </Grid>
       <Controller
         control={control}
+        name="translations.0.description"
+        render={({ field }) => (
+          <CustomRichTextWrapper
+            {...field}
+            value={field.value || undefined}
+            label="Ürün Açıklaması"
+          />
+        )}
+      />
+      <Controller
+        control={control}
         name="images"
         render={({ field }) => (
           <CustomDropzone
@@ -244,25 +254,7 @@ const VariantProductForm = ({ defaultValues }: VariantProductFormProps) => {
           control={control}
           name="brandId"
           render={({ field }) => (
-            <Select
-              {...field}
-              label="Marka"
-              nothingFoundMessage={
-                <Stack gap={"md"} py="xl" justify="center" align="center">
-                  <Text fw={700} fz="md">
-                    Henüz marka eklenmemiş.
-                  </Text>
-                  <Button
-                    onClick={() => {
-                      push("/admin/products/definitions/brands/create");
-                    }}
-                    variant="light"
-                  >
-                    Marka Ekle
-                  </Button>
-                </Stack>
-              }
-            />
+            <CustomBrandSelect {...field} value={field.value || undefined} />
           )}
         />
       </SimpleGrid>

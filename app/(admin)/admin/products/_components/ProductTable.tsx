@@ -1,9 +1,9 @@
 "use client";
-import { Table, Image, Text, Badge } from "@mantine/core";
-import React, { useState } from "react";
-import { ProcessedProduct } from "../page";
-import { useRouter } from "next/navigation";
 import TableImage from "@/app/(admin)/_components/TableImage";
+import { Badge, Table, Text } from "@mantine/core";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { ProcessedProduct } from "../page";
 
 interface ProductTableProps {
   products: ProcessedProduct[];
@@ -61,9 +61,11 @@ const ProductTable = ({ products }: ProductTableProps) => {
               </Table.Td>
               <Table.Td>
                 <Text fw={500}>{product.name}</Text>
-                <Badge variant="light" color="blue">
-                  {product.variantCount} varyant
-                </Badge>  
+                {product.variantCount > 0 && (
+                  <Badge variant="light" color="blue">
+                    {product.variantCount} varyant
+                  </Badge>
+                )}
               </Table.Td>
               <Table.Td>
                 <Text>{product.brandName || "Marka yok"}</Text>

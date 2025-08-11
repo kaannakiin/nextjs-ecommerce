@@ -43,19 +43,19 @@ enum ProductType {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  surname       String?
-  email         String?   @unique
-  phone         String?   @unique
-  password      String?
-  image         String?
-  verified Boolean   @default(false)
-  role          Role      @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  accounts      Account[]
-  sessions      Session[]
+  id        String    @id @default(cuid())
+  name      String?
+  surname   String?
+  email     String?   @unique
+  phone     String?   @unique
+  password  String?
+  image     String?
+  verified  Boolean   @default(false)
+  role      Role      @default(USER)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  accounts  Account[]
+  sessions  Session[]
 
   @@index([email], name: "idx_users_email")
   @@index([phone], name: "idx_users_phone")
@@ -305,16 +305,16 @@ model Product {
   type ProductType @default(PHYSICAL)
 
   // Sadece basit ürünler için fiyat ve çeviri
-  prices       ProductPrices[]
-  translations ProductTranslation[]
-  categories   ProductCategory[]
-
-  taxonomyCategory   TaxonomyCategory? @relation(fields: [taxonomyCategoryId], references: [id])
+  prices             ProductPrices[]
+  translations       ProductTranslation[]
+  categories         ProductCategory[]
+  stock              Int?
+  taxonomyCategory   TaxonomyCategory?    @relation(fields: [taxonomyCategoryId], references: [id])
   taxonomyCategoryId String?
-  brand              ProductBrand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  brand              ProductBrand?        @relation(fields: [brandId], references: [id], onDelete: SetNull)
   brandId            String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   assets             ProductAsset[]
 
   // Variant ürünler için

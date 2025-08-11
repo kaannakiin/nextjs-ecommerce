@@ -7,9 +7,7 @@ import "@blocknote/core/fonts/inter.css";
 import { BlockNoteView } from "@blocknote/mantine";
 import "@blocknote/mantine/style.css";
 import { useCreateBlockNote } from "@blocknote/react";
-import { Block } from "@blocknote/core";
 import { Divider, Text } from "@mantine/core";
-import { treeifyError } from "zod";
 import {
   HTMLAttributes,
   ReactNode,
@@ -17,6 +15,7 @@ import {
   useEffect,
   useImperativeHandle,
 } from "react";
+import { treeifyError } from "zod";
 
 interface CustomRichTextEditorProps
   extends Omit<

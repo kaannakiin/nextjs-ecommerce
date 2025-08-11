@@ -2,8 +2,13 @@ import prisma from "@/lib/prisma";
 import { Params } from "@/types/globalTypes";
 import BasicProductForm from "../../_components/BasicProductForm";
 import VariantProductForm from "../../_components/VariantProductForm";
-import { Variant, VariantProduct } from "@/schemas/product-schema";
+import {
+  BasicProduct,
+  Variant,
+  VariantProduct,
+} from "@/schemas/product-schema";
 import { url } from "inspector";
+import { assert } from "console";
 
 const ProductFormPage = async ({ params }: { params: Params }) => {
   const slug = (await params).slug;
@@ -15,6 +20,7 @@ const ProductFormPage = async ({ params }: { params: Params }) => {
     const product = await prisma.product.findUnique({
       where: { id: slug },
       include: {
+        prices: true,
         translations: true,
         categories: {
           select: {
@@ -44,7 +50,39 @@ const ProductFormPage = async ({ params }: { params: Params }) => {
       !product.variantCombinations ||
       product.variantCombinations.length === 0
     ) {
-      return <BasicProductForm />;
+      return (
+        <BasicProductForm
+          defaultValues={{
+            prices: product.prices.map((price) => ({
+              currency: price.currency,
+              price: price.price,
+              discountedPrice: price.discountedPrice,
+              buyedPrice: price.buyedPrice,
+            })),
+            existingImages: product.assets.map((asset) => ({
+              url: asset.asset.url,
+              type: asset.asset.type,
+            })) as BasicProduct["existingImages"],
+            productType: product.type,
+            stock: product.stock || 0,
+            translations: product.translations.map((translation) => ({
+              locale: translation.locale,
+              name: translation.name,
+              slug: translation.slug,
+              description: translation.description,
+              metaDescription: translation.metaDescription,
+              metaTitle: translation.metaTitle,
+              shortDescription: translation.shortDescription,
+            })),
+            brandId: product.brandId,
+            categoryIds: product.categories.map(
+              (category) => category.categoryId
+            ),
+            googleTaxonomyId: product.taxonomyCategoryId,
+            uniqueId: product.id,
+          }}
+        />
+      );
     }
 
     const selectedVariants = await prisma.productVariantGroup.findMany({
