@@ -1,11 +1,17 @@
-import { AssetType, ProductType } from "@/app/generated/prisma";
 import {
+  AssetType,
+  Currency,
+  Locale,
+  ProductType,
+} from "@/app/generated/prisma";
+import {
+  ProductPrice,
   Variant,
   VariantProduct,
-  VariantOption,
-  ProductPrice,
 } from "@/schemas/product-schema";
 import { createId } from "@paralleldrive/cuid2";
+import { DateArg, format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 export function getAssetTypeLabel(type: AssetType): string {
   switch (type) {
@@ -19,6 +25,118 @@ export function getAssetTypeLabel(type: AssetType): string {
       return "Resim";
   }
 }
+export function getLocaleLabel(locale: Locale): string {
+  switch (locale) {
+    case "TR":
+      return "Türkiye (TR)";
+    case "EN":
+      return "İngiltere (EN)";
+    case "DE":
+      return "Almanya (DE)";
+    default:
+      return "Bilinmiyor";
+  }
+}
+
+export function getCurrencyLabel(currency: Currency): string {
+  switch (currency) {
+    case "TRY":
+      return "Türk Lirası (TRY)";
+    case "USD":
+      return "Amerikan Doları (USD)";
+    case "EUR":
+      return "Euro (EUR)";
+    case "AUD":
+      return "Avustralya Doları (AUD)";
+    case "DKK":
+      return "Danimarka Kronu (DKK)";
+    case "GBP":
+      return "İngiliz Sterlini (GBP)";
+    case "CHF":
+      return "İsviçre Frangı (CHF)";
+    case "SEK":
+      return "İsveç Kronu (SEK)";
+    case "CAD":
+      return "Kanada Doları (CAD)";
+    case "KWD":
+      return "Kuveyt Dinarı (KWD)";
+    case "NOK":
+      return "Norveç Kronu (NOK)";
+    case "SAR":
+      return "Suudi Arabistan Riyali (SAR)";
+    case "JPY":
+      return "Japon Yeni (JPY)";
+    default:
+      return `${currency}`;
+  }
+}
+
+// Sadece para birimi isimlerini döndüren fonksiyon
+export function getCurrencyName(currency: Currency): string {
+  switch (currency) {
+    case "TRY":
+      return "Türk Lirası";
+    case "USD":
+      return "Amerikan Doları";
+    case "EUR":
+      return "Euro";
+    case "AUD":
+      return "Avustralya Doları";
+    case "DKK":
+      return "Danimarka Kronu";
+    case "GBP":
+      return "İngiliz Sterlini";
+    case "CHF":
+      return "İsviçre Frangı";
+    case "SEK":
+      return "İsveç Kronu";
+    case "CAD":
+      return "Kanada Doları";
+    case "KWD":
+      return "Kuveyt Dinarı";
+    case "NOK":
+      return "Norveç Kronu";
+    case "SAR":
+      return "Suudi Arabistan Riyali";
+    case "JPY":
+      return "Japon Yeni";
+    default:
+      return currency;
+  }
+}
+
+export function getCurrencySymbol(currency: Currency): string {
+  switch (currency) {
+    case "TRY":
+      return "TRY";
+    case "USD":
+      return "USD";
+    case "EUR":
+      return "EUR";
+    case "AUD":
+      return "AUD";
+    case "DKK":
+      return "DKK";
+    case "GBP":
+      return "GBP";
+    case "CHF":
+      return "CHF";
+    case "SEK":
+      return "SEK";
+    case "CAD":
+      return "CAD";
+    case "KWD":
+      return "KWD";
+    case "NOK":
+      return "NOK";
+    case "SAR":
+      return "SAR";
+    case "JPY":
+      return "JPY";
+    default:
+      return currency;
+  }
+}
 
 export function getProductTypeLabel(type: ProductType): string {
   switch (type) {
@@ -29,6 +147,10 @@ export function getProductTypeLabel(type: ProductType): string {
     default:
       return "Fiziksel Ürün";
   }
+}
+
+export function formatDateTR(date: DateArg<Date> & {}, formatStr: string) {
+  return format(date, formatStr, { locale: tr });
 }
 
 /**

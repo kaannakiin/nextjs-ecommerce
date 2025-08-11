@@ -1,10 +1,9 @@
-import { Card, Group, SimpleGrid, Text } from "@mantine/core";
+import AdminHoverCard from "@/app/(admin)/_components/AdminHoverCard";
 import {
   IconBrandMedium,
   IconCategory,
   IconVersions,
 } from "@tabler/icons-react";
-import Link from "next/link";
 
 const DefinitionsPage = () => {
   const data: {
@@ -52,47 +51,7 @@ const DefinitionsPage = () => {
   ];
   return (
     <div className="flex flex-col gap-3">
-      <SimpleGrid
-        cols={{
-          xs: 2,
-          md: 3,
-          lg: 4,
-        }}
-      >
-        {data.map((item, index) => (
-          <Card
-            component={Link}
-            href={item.href}
-            key={`${item.href}-${index}`}
-            withBorder
-            radius={"md"}
-            shadow="md"
-            p="md"
-            py={"lg"}
-            className="hover:bg-gray-500 transition-colors duration-200 group"
-          >
-            <Group wrap="nowrap" gap="sm" align="flex-start">
-              <div>{item.icon}</div>
-              <div>
-                <Text
-                  fz="md"
-                  fw={700}
-                  className="group-hover:text-white text-black transition-colors duration-200"
-                >
-                  {item.title}
-                </Text>
-                <Text
-                  fz="sm"
-                  fw={500}
-                  className="group-hover:text-white text-gray-600 transition-colors duration-200"
-                >
-                  {item.description}
-                </Text>
-              </div>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <AdminHoverCard data={data} />
     </div>
   );
 };

@@ -25,12 +25,10 @@ const AdminNavbar = () => {
   useEffect(() => {
     navbarData.forEach((item) => {
       if (item.children && item.children.length > 0) {
-        // Direkt eşleşme kontrolü
         const hasActiveChild = item.children.some(
           (child) => child.href === pathname
         );
 
-        // Alt sayfa kontrolü - pathname herhangi bir child href ile başlıyorsa
         const hasActiveSubPage = item.children.some((child) =>
           pathname.startsWith(child.href + "/")
         );
@@ -80,8 +78,14 @@ const AdminNavbar = () => {
     },
     {
       title: "Ayarlar",
-      href: "/admin/settings",
       icon: <IconSettings size={24} />,
+      children: [
+        { href: "/admin/settings", title: "Genel Ayarlar" },
+        {
+          href: "/admin/settings/localization",
+          title: "Lokalizasyon",
+        },
+      ],
     },
   ];
 

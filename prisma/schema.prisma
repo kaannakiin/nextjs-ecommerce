@@ -18,6 +18,16 @@ enum Currency {
   TRY
   USD
   EUR
+  AUD // AVUSTRALYA DOLARI
+  DKK // DANİMARKA KRONU
+  GBP // İNGİLİZ STERLİNİ
+  CHF // İSVİÇRE FRANGI
+  SEK // İSVEÇ KRONU
+  CAD // KANADA DOLARI
+  KWD // KUVEYT DİNARI
+  NOK // NORVEÇ KRONU
+  SAR // SUUDİ ARABİSTAN RİYALİ
+  JPY // JAPON YENİ
 }
 
 enum Locale {
@@ -40,6 +50,14 @@ enum VariantType {
 enum ProductType {
   PHYSICAL
   DIGITAL
+}
+
+model Organization {
+  id           String   @id @default(cuid())
+  mainCurrency Currency @default(TRY)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model User {
@@ -527,4 +545,15 @@ model ProductVariantCombination {
   @@index([productId])
   @@index([sku])
   @@index([isActive])
+}
+
+model CurrencyLocaleMap {
+  id        String   @id @default(cuid())
+  locale    Locale
+  currency  Currency
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locale, currency])
+  @@unique([locale])
 }
