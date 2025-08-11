@@ -172,9 +172,9 @@ const CustomDropzone = ({
             <Text size="sm" c="dimmed" inline mt={7}>
               {props?.maxFiles
                 ? `En fazla ${props.maxFiles} dosya`
-                : "İstediğiniz kadar dosya"}{" "}
-              ekleyebilirsiniz, her dosya{" "}
-              {props?.maxSize ? `${props.maxSize / 1024 / 1024}MB` : "5MB"}{" "}
+                : "İstediğiniz kadar dosya"}
+              ekleyebilirsiniz, her dosya
+              {props?.maxSize ? `${props.maxSize / 1024 / 1024}MB` : "5MB"}
               geçmemelidir
             </Text>
           </div>
@@ -241,7 +241,6 @@ const CustomDropzone = ({
                         Resmi silmek istiyor musunuz?
                       </Text>
                       <Group gap="xs" justify="flex-end">
-                        {" "}
                         <Button
                           size="xs"
                           variant="outline"
@@ -344,7 +343,6 @@ const CustomDropzone = ({
                         Resmi silmek istiyor musunuz?
                       </Text>
                       <Group gap="xs" align="flex-end" justify="flex-end">
-                        {" "}
                         <Button
                           size="xs"
                           variant="outline"

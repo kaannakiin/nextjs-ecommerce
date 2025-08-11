@@ -31,7 +31,6 @@ interface GoogleTaxonomySelectProps
 const GoogleTaxonomySelect = ({
   value,
   onChange,
-  placeholder = "Kategori seçin...",
   disabled = false,
   error,
   label,
@@ -228,7 +227,7 @@ const GoogleTaxonomySelect = ({
                 </Text>
               </div>
             ) : (
-              <Input.Placeholder>{placeholder}</Input.Placeholder>
+              <Input.Placeholder></Input.Placeholder>
             )}
           </InputBase>
         </Combobox.Target>

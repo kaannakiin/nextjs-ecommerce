@@ -109,7 +109,7 @@ const CategoryTable = ({
                         >
                           <IconTrash color="red" />
                         </ActionIcon>
-                      </Popover.Target>{" "}
+                      </Popover.Target>
                       <Popover.Dropdown>
                         <Stack gap={"md"}>
                           <Text size="sm" fw={700}>

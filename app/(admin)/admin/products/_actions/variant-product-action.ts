@@ -5,10 +5,10 @@ import {
   DeleteObject,
   uploadFileToMinio,
 } from "@/actions/helper-actions/minio-actions";
-import { Asset, Currency } from "@/app/generated/prisma";
+import { Asset, AssetType, Currency } from "@/app/generated/prisma";
 import prisma from "@/lib/prisma";
 import { slugify } from "@/lib/slugify";
-import { VariantProduct } from "@/schemas/product-schema";
+import { BasicProduct, VariantProduct } from "@/schemas/product-schema";
 import { ActionResponse } from "@/types/globalTypes";
 
 async function createOrUpdateVariantOption(
@@ -1108,6 +1108,274 @@ export async function DeleteImageFromVariantCombination(
         error instanceof Error
           ? error.message
           : "Variant resmi silme işlemi başarısız.",
+    };
+  }
+}
+
+export async function UpdateOrDeleteBasicProduct(
+  formData: BasicProduct
+): Promise<ActionResponse> {
+  const uploadedImages: string[] = [];
+  try {
+    if (formData.uniqueId) {
+      const isProductExists = await prisma.product.findUnique({
+        where: { id: formData.uniqueId },
+      });
+
+      if (!isProductExists) {
+        return {
+          success: false,
+          message: "Güncellemek istediğiniz ürün bulunamadı",
+        };
+      }
+
+      // 1. İlk önce resimleri MinIO'ya yükle (transaction dışında)
+      const uploadedAssets: { url: string; type: AssetType }[] = [];
+      if (formData.images && formData.images.length > 0) {
+        for (const image of formData.images) {
+          const uploadedImage = await uploadFileToMinio({
+            bucketName: "product-images",
+            file: image,
+            isNeedOg: true,
+            isNeedThumbnail: true,
+          });
+
+          if (uploadedImage.success && uploadedImage.data) {
+            uploadedImages.push(uploadedImage.data.originalUrl);
+            uploadedAssets.push({
+              url: uploadedImage.data.originalUrl,
+              type: image.type.startsWith("image/")
+                ? "IMAGE"
+                : image.type.startsWith("video/")
+                ? "VIDEO"
+                : "DOCUMENT",
+            });
+          }
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Asset'ları veritabanında oluştur
+        const createdAssets: Asset[] = [];
+        for (const assetData of uploadedAssets) {
+          const asset = await tx.asset.create({
+            data: assetData,
+          });
+          createdAssets.push(asset);
+        }
+
+        const maxOrderAsset = await tx.productAsset.findFirst({
+          where: { productId: formData.uniqueId || "" },
+          orderBy: { order: "desc" },
+          select: { order: true },
+        });
+
+        const startOrder = (maxOrderAsset?.order ?? -1) + 1;
+
+        // 3. Yeni asset'ları mevcut sıralamayı bozmadan ekle
+        if (createdAssets.length > 0) {
+          await tx.productAsset.createMany({
+            data: createdAssets.map((asset, index) => ({
+              productId: formData.uniqueId!,
+              assetId: asset.id,
+              order: startOrder + index,
+            })),
+          });
+        }
+
+        // 4. Ürün bilgilerini güncelle
+        await tx.product.update({
+          where: { id: formData.uniqueId || "" },
+          data: {
+            type: formData.productType,
+            brandId: formData.brandId || null,
+            stock: formData.stock || null,
+            // Fiyatları güncelle
+            prices: {
+              upsert: formData.prices.map((price) => ({
+                where: {
+                  currency_productId: {
+                    currency: price.currency,
+                    productId: formData.uniqueId!,
+                  },
+                },
+                create: {
+                  currency: price.currency,
+                  price: price.price,
+                  discountedPrice: price.discountedPrice,
+                  buyedPrice: price.buyedPrice,
+                },
+                update: {
+                  price: price.price,
+                  discountedPrice: price.discountedPrice,
+                  buyedPrice: price.buyedPrice,
+                },
+              })),
+            },
+            // Çevirileri güncelle
+            translations: {
+              upsert: formData.translations.map((translation) => ({
+                where: {
+                  locale_productId: {
+                    locale: translation.locale,
+                    productId: formData.uniqueId!,
+                  },
+                },
+                create: {
+                  name: translation.name,
+                  slug: slugify(translation.name),
+                  locale: translation.locale,
+                  description: translation.description,
+                  shortDescription: translation.shortDescription,
+                  metaTitle: translation.metaTitle,
+                  metaDescription: translation.metaDescription,
+                },
+                update: {
+                  name: translation.name,
+                  slug: slugify(translation.name),
+                  description: translation.description,
+                  shortDescription: translation.shortDescription,
+                  metaTitle: translation.metaTitle,
+                  metaDescription: translation.metaDescription,
+                },
+              })),
+            },
+            // Kategorileri güncelle
+            ...(formData.categoryIds && {
+              categories: {
+                deleteMany: {},
+                create: formData.categoryIds.map((categoryId) => ({
+                  categoryId,
+                })),
+              },
+            }),
+          },
+        });
+      });
+
+      return {
+        success: true,
+        message: "Ürün başarıyla güncellendi",
+      };
+    } else {
+      return await CreateBasicProduct(formData);
+    }
+  } catch (error) {
+    for (const imageUrl of uploadedImages) {
+      await DeleteImage({ url: imageUrl });
+    }
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? `Ürün güncelleme işlemi başarısız: ${error.message}`
+          : "Beklenmeyen bir hata oluştu",
+    };
+  }
+}
+
+async function CreateBasicProduct(
+  formData: BasicProduct
+): Promise<ActionResponse> {
+  const uploadedImages: string[] = [];
+
+  try {
+    // İlk önce resimleri MinIO'ya yükle (transaction dışında)
+    const uploadedAssets: { url: string; type: AssetType }[] = [];
+    if (formData.images && formData.images.length > 0) {
+      for (const image of formData.images) {
+        const uploadedImage = await uploadFileToMinio({
+          bucketName: "product-images",
+          file: image,
+          isNeedOg: true,
+          isNeedThumbnail: true,
+        });
+
+        if (uploadedImage.success && uploadedImage.data) {
+          uploadedImages.push(uploadedImage.data.originalUrl);
+          uploadedAssets.push({
+            url: uploadedImage.data.originalUrl,
+            type: "IMAGE",
+          });
+        }
+      }
+    }
+
+    // Transaction içinde sadece veritabanı işlemleri
+    const product = await prisma.$transaction(async (tx) => {
+      // Asset'ları veritabanında oluştur
+      const createdAssets: Asset[] = [];
+      for (const assetData of uploadedAssets) {
+        const asset = await tx.asset.create({
+          data: assetData,
+        });
+        createdAssets.push(asset);
+      }
+
+      // Ürün oluştur
+      return await tx.product.create({
+        data: {
+          type: formData.productType,
+          brandId: formData.brandId || null,
+          stock: formData.stock || null,
+          prices: {
+            createMany: {
+              data: formData.prices.map((price) => ({
+                currency: price.currency,
+                price: price.price,
+                discountedPrice: price.discountedPrice,
+                buyedPrice: price.buyedPrice,
+              })),
+            },
+          },
+          translations: {
+            createMany: {
+              data: formData.translations.map((translation) => ({
+                name: translation.name,
+                slug: slugify(translation.name),
+                locale: translation.locale,
+                description: translation.description,
+                shortDescription: translation.shortDescription,
+                metaTitle: translation.metaTitle,
+                metaDescription: translation.metaDescription,
+              })),
+            },
+          },
+          assets: {
+            createMany: {
+              data: createdAssets.map((asset, index) => ({
+                assetId: asset.id,
+                order: index,
+              })),
+            },
+          },
+          categories: {
+            create:
+              formData.categoryIds?.map((categoryId) => ({
+                categoryId,
+              })) || [],
+          },
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message: "Ürün başarıyla oluşturuldu",
+    };
+  } catch (error) {
+    // Hata durumunda yüklenen resimleri temizle
+    for (const imageUrl of uploadedImages) {
+      await DeleteImage({ url: imageUrl });
+    }
+
+    return {
+      success: false,
+      message:
+        error instanceof Error
+          ? `Ürün oluşturma işlemi başarısız: ${error.message}`
+          : "Beklenmeyen bir hata oluştu",
     };
   }
 }

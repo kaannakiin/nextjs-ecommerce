@@ -170,7 +170,24 @@ export type ProductPrice = z.infer<typeof ProductPriceSchema>;
 export type ProductTranslation = z.infer<typeof ProductTranslationSchema>;
 
 export const BasicProductSchema = z.object({
+  uniqueId: z.string().optional().nullable(),
   googleTaxonomyId: z.string().optional().nullable(),
+  existingImages: z
+    .array(
+      z.object({
+        url: z
+          .url({ error: "Lütfen geçerli bir resim URL'si giriniz" })
+          .startsWith("https://"),
+        type: z.enum(AssetType, {
+          error: "Lütfen geçerli bir resim tipi giriniz",
+        }),
+      })
+    )
+    .optional()
+    .nullable(),
+  stock: z
+    .number({ error: "Stock zorunludur" })
+    .positive({ error: "Stock 0'dan büyük olmak zorundadır" }),
   productType: z.enum(ProductType, {
     error: "Lütfen geçerli bir ürün tipi seçiniz",
   }),
@@ -234,15 +251,19 @@ export const BasicProductSchema = z.object({
         message: "Her dil için sadece bir çeviri tanımlanabilir",
       }
     ),
-  images: z.array(ProductImageSchema, {
-    error: "Ürün resimlerini giriniz",
-  }),
+  images: z
+    .array(ProductImageSchema, {
+      error: "Ürün resimlerini giriniz",
+    })
+    .optional()
+    .nullable(),
 });
 
 export type BasicProduct = z.infer<typeof BasicProductSchema>;
 
 export const CategorySchema = z.object({
   uniqueId: z.cuid2().optional().nullable(),
+
   translations: z
     .array(
       z.object({
@@ -662,6 +683,9 @@ export type VariantTranslation = z.infer<typeof VariantTranslationSchema>;
 
 export const VariantProductSchema = BasicProductSchema.omit({
   prices: true,
+  stock: true,
+  uniqueId: true,
+  existingImages: true,
 }).extend({
   uniqueId: z.cuid2().optional().nullable(),
   selectedVariants: z.array(VariantSchema),
