@@ -1,21 +1,25 @@
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "./lib/auth";
-import { NextResponse } from "next/server";
+import createMiddleware from "next-intl/middleware";
+import { routing } from "./i18n/routing";
 
 const authRoutes = ["/api/auth", "/register", "/login"];
 const adminRoutes = ["/admin", "/api/admin"];
 const userRoutes = ["/profile", "/api/user"];
+
+const intlMiddleware = createMiddleware(routing);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
   const userRole = req.auth?.user?.role;
 
-  // 1. Giriş yapmış kullanıcılar auth route'larına erişemez
+  // Giriş yapmış kullanıcıları auth route'larından yönlendir
   if (isLoggedIn && authRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  // 2. Admin olmayan kullanıcılar admin route'larına erişemez
+  // Admin route kontrolü
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
     if (!isLoggedIn) {
       return NextResponse.redirect(new URL("/login", req.url));
@@ -28,12 +32,13 @@ export default auth((req) => {
     }
   }
 
-  // 3. Giriş yapmamış kullanıcılar user route'larına erişemez
+  // Kullanıcı route kontrolü
   if (!isLoggedIn && userRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  return NextResponse.next();
+  // Auth kontrolü geçtikten sonra internationalization middleware'i çalıştır
+  return intlMiddleware(req as NextRequest);
 });
 
 export const config = {

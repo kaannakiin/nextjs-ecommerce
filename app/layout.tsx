@@ -1,4 +1,3 @@
-import "./globals.css";
 import {
   ColorSchemeScript,
   MantineColorsTuple,
@@ -9,6 +8,7 @@ import {
 import { Notifications } from "@mantine/notifications";
 import { Suspense } from "react";
 import TanstackProvider from "./_components/TanstackProvider";
+import "./globals.css";
 
 const primary: MantineColorsTuple = [
   "#ecf4ff",
@@ -29,13 +29,16 @@ const theme = createTheme({
   },
   cursorType: "pointer",
 });
-export default function RootLayout({
+export default async function RootLayout({
   children,
+  params,
 }: Readonly<{
   children: React.ReactNode;
+  params: Promise<{ locale: string }>;
 }>) {
+  const { locale } = await params;
   return (
-    <html lang="tr" {...mantineHtmlProps} suppressHydrationWarning>
+    <html lang={`${locale}`} {...mantineHtmlProps} suppressHydrationWarning>
       <head>
         <ColorSchemeScript />
       </head>
